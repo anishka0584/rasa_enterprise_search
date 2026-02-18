@@ -38,12 +38,14 @@ flows:
   pattern_cancel_flow:
     description: >
       Triggered ONLY when the user clearly wants to stop and cancel the current booking process.
-      Phrases that trigger this: 'cancel', 'stop', 'I do not want to book anymore',
-      'forget it', 'never mind', 'I changed my mind', 'exit', 'quit', 'I want to cancel'.
+      Phrases that trigger this: 'cancel', 'stop', 'I do not want to book', 'I dont want to book',
+      'forget it', 'never mind', 'I changed my mind', 'exit', 'quit', 'I want to cancel',
+      'I do not want to continue', 'abort'.
       Do NOT trigger this for general questions or FAQs.
+      This pattern cancels the active flow entirely — no further steps should run after this.
     name: pattern cancel flow
     steps:
-      - action: utter_flow_cancelled
+      - action: action_cancel_booking
 
   pattern_end_of_conversation:
     description: "Runs at the end of every conversation. Uses a custom action that returns nothing so no closing message is shown."

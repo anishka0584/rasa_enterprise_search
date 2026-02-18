@@ -27,9 +27,6 @@ responses:
   utter_goodbye:
     - text: "Goodbye! 👋 Have a wonderful trip — feel free to come back anytime you need to book a hotel. Safe travels! ✈️"
 
-  utter_booking_cancelled:
-    - text: "Sorry to see you go! 😊 No worries at all — your booking has been cancelled. Whenever you're ready to book again, I'll be right here. Have a great day!"
-
   utter_free_chitchat_response:
     - text: "I'm here specifically to help with hotel bookings! I'd be happy to get started — where would you like to stay?"
 
@@ -79,7 +76,7 @@ responses:
     - text: "Got it! I've updated that for you."
 
   utter_flow_cancelled:
-    - text: "Sorry to see you go! 😊 Your booking has been cancelled. Come back anytime — I'm always here to help you find the perfect hotel. Have a great day!"
+    - text: ""
 
   utter_flow_completed:
     - text: ""
@@ -102,4 +99,5 @@ actions:
   - validate_confirm_booking
   - validate_dates
   - action_format_numbers
+  - action_cancel_booking
   - action_session_end

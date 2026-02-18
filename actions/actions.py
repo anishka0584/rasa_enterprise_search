@@ -334,3 +334,37 @@ class ActionSessionEnd(Action):
         domain: Dict[Text, Any],
     ) -> List[Dict[Text, Any]]:
         return []
+
+
+class ActionCancelBooking(Action):
+    """
+    Handles booking cancellation cleanly.
+    Sends the cancellation message and resets all booking slots
+    so the flow cannot resume after cancellation.
+    """
+
+    def name(self) -> Text:
+        return "action_cancel_booking"
+
+    def run(
+        self,
+        dispatcher: CollectingDispatcher,
+        tracker: Tracker,
+        domain: Dict[Text, Any],
+    ) -> List[Dict[Text, Any]]:
+
+        dispatcher.utter_message(
+            text="Sorry to see you go! 😊 Your booking has been cancelled. "
+                 "Come back anytime — I'm always here to help you find the perfect hotel. "
+                 "Have a great day!"
+        )
+
+        # Clear all booking slots so the flow cannot resume
+        return [
+            SlotSet("location", None),
+            SlotSet("check_in", None),
+            SlotSet("check_out", None),
+            SlotSet("num_guests", None),
+            SlotSet("num_rooms", None),
+            SlotSet("confirm_booking", None),
+        ]
