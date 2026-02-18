@@ -1,0 +1,88 @@
+version: "3.1"
+flows:
+  greet_user:
+    description: "Greet the user when they say hello, hi, hey or any greeting"
+    steps:
+      - action: utter_greet
+
+  say_goodbye:
+    description: "Say goodbye ONLY when the user explicitly says bye, goodbye, see you, take care, farewell, good night, or a clear farewell phrase. Do NOT trigger for booking questions or hotel questions."
+    steps:
+      - action: utter_goodbye
+
+  book_hotel:
+    description: "Help the user book a hotel room by collecting location, dates, number of guests and rooms. Trigger this flow when the user says anything like 'book a hotel', 'I want to book a room', 'find me a hotel', 'hotel booking', 'book a room', or similar."
+    steps:
+      - collect: location
+        id: step_location
+        description: >
+          The city or town the user wants to stay in. A place name like 'Goa', 'London', 'Paris', 'New York'.
+          NOT a date. NOT a number. Only a place name counts as a valid answer here.
+
+      - collect: check_in
+        id: step_check_in
+        description: >
+          The hotel check-in date. The user will give a date in any format such as:
+          '5th dec', 'december 5th', '05/12/2026', 'next friday', '4th of july', 'jan 10'.
+          ANY date-like answer is a valid check-in date. Do NOT treat date answers as chitchat or off-topic.
+          Do NOT trigger pattern_chitchat for date answers.
+
+      - collect: check_out
+        id: step_check_out
+        description: >
+          The hotel check-out date. The user will give a date in any format such as:
+          '8th dec', 'december 8th', '08/12/2026', 'the following monday', 'jan 15'.
+          ANY date-like answer is a valid check-out date. Do NOT treat date answers as chitchat or off-topic.
+          Do NOT trigger pattern_chitchat for date answers.
+
+      - action: validate_dates
+        id: step_validate_dates
+        next:
+          - if: "slots.check_in == null"
+            then: "step_check_in"
+          - if: "slots.check_out == null"
+            then: "step_check_out"
+          - else: "step_num_guests"
+
+      - collect: num_guests
+        id: step_num_guests
+        description: >
+          The number of guests staying. The user may say '2', 'two', 'just me', 'a family of 4',
+          'three people', 'I think 4 guests', 'about 3'. ANY number or quantity answer is valid,
+          even if the user expresses uncertainty (e.g. 'I think', 'maybe', 'about').
+          Must be 24 or fewer. Do NOT treat number answers as chitchat or off-topic.
+          Do NOT trigger pattern_chitchat when the user provides a number in this context.
+
+      - collect: num_rooms
+        id: step_num_rooms
+        description: >
+          The number of rooms needed. The user may say '1', 'one room', 'two rooms', '3',
+          'I think 4 rooms', 'maybe 2'. ANY number or quantity answer is valid, even if
+          the user expresses uncertainty (e.g. 'I think', 'maybe', 'about').
+          Maximum is 10. Do NOT treat number answers as chitchat or off-topic.
+          Do NOT trigger pattern_chitchat when the user provides a number in this context.
+          IMPORTANT: Do NOT infer or assume this value from num_guests or any other slot.
+          Only fill this slot if the user has explicitly stated the number of rooms.
+
+      - action: action_format_numbers
+        id: step_format_numbers
+
+      - action: utter_booking_summary
+        id: step_show_summary
+
+      - collect: confirm_booking
+        description: >
+          Ask the user if the booking details are correct.
+          If they say yes, correct, looks good, confirm — set to true.
+          If they say no, wrong, or request to change a specific detail — set to false.
+        next:
+          - if: "slots.confirm_booking != 'true'"
+            then:
+              - action: utter_ask_for_changes
+              - set_slots:
+                  - confirm_booking: null
+                next: "step_show_summary"
+          - else: step_booking_confirmed
+
+      - action: utter_booking_confirmed
+        id: step_booking_confirmed

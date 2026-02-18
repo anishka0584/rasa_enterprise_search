@@ -1,0 +1,24 @@
+recipe: default.v1
+language: en
+assistant_id: synchronic-pole
+pipeline:
+  - name: CompactLLMCommandGenerator
+    llm:
+      model_group: rasa_command_generation_model
+    flow_retrieval:
+      active: false
+    user_input:
+      max_characters: 420
+
+policies:
+  - name: FlowPolicy
+  - name: EnterpriseSearchPolicy
+    vector_store:
+      type: faiss
+    embeddings:
+      model_group: rasa_embeddings_model
+    llm:
+      model_group: rasa_command_generation_model
+    source:
+      type: file
+      path: ./docs

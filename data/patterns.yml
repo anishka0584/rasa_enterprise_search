@@ -1,0 +1,52 @@
+flows:
+  pattern_chitchat:
+    description: >
+      Handles ONLY purely social messages with absolutely no connection to hotels, travel, rooms,
+      pets, policies, bookings, locations, amenities, dates, or anything hotel-related whatsoever.
+      Examples of genuine chitchat ONLY: 'how are you', 'tell me a joke', 'what is the meaning of life',
+      'who made you', 'what can you do', 'are you a robot'.
+      Do NOT trigger this for ANY hotel or travel related question, no matter how it is phrased.
+      Do NOT trigger this when the user is answering a booking question with a number, date, or location.
+      If in doubt between chitchat and search, always choose search.
+    name: pattern chitchat
+    steps:
+      - action: utter_free_chitchat_response
+
+  pattern_search:
+    description: >
+      Handles ANY question or query that relates to hotels, travel, rooms, pets, policies,
+      amenities, bookings, locations, or any hotel-related topic — even if a booking flow
+      is currently active. Always prefer this over pattern_chitchat when the question has
+      anything to do with hotels or travel.
+      Trigger this for questions like:
+      'can I bring my dog', 'do you allow pets', 'is there a pet fee',
+      'is breakfast included', 'what time is check-in', 'what time is check-out',
+      'can I check in early', 'is there parking', 'do you have Wi-Fi',
+      'what room types are available', 'can I cancel my booking',
+      'is there air conditioning', 'are children allowed', 'do you have accessible rooms',
+      'what is the cancellation policy', 'how do I pay', 'is there a booking fee',
+      'what locations do you cover', 'which cities can I book in', 'where can I book',
+      'can I get a discount', 'do you have cribs', 'what is the maximum stay',
+      'how many rooms can I book', 'how many guests can I bring',
+      'do you have family rooms', 'is there a pool', 'what hotels do you offer',
+      'how do I modify my booking', 'is my booking confirmed', 'how do I contact support'.
+      When uncertain whether a question is chitchat or search, ALWAYS choose pattern_search.
+    name: pattern search
+    steps:
+      - action: action_trigger_search
+
+  pattern_cancel_flow:
+    description: >
+      Triggered ONLY when the user clearly wants to stop and cancel the current booking process.
+      Phrases that trigger this: 'cancel', 'stop', 'I do not want to book anymore',
+      'forget it', 'never mind', 'I changed my mind', 'exit', 'quit', 'I want to cancel'.
+      Do NOT trigger this for general questions or FAQs.
+    name: pattern cancel flow
+    steps:
+      - action: utter_flow_cancelled
+
+  pattern_end_of_conversation:
+    description: "Runs at the end of every conversation. Uses a custom action that returns nothing so no closing message is shown."
+    name: pattern end of conversation
+    steps:
+      - action: action_session_end

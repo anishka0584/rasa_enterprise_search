@@ -1,0 +1,105 @@
+version: "3.1"
+
+slots:
+  location:
+    type: text
+    mappings: [{ type: from_llm }]
+  check_in:
+    type: text
+    mappings: [{ type: from_llm }]
+  check_out:
+    type: text
+    mappings: [{ type: from_llm }]
+  num_guests:
+    type: text
+    mappings: [{ type: from_llm }]
+  num_rooms:
+    type: text
+    mappings: [{ type: from_llm }]
+  confirm_booking:
+    type: text
+    mappings: [{ type: from_llm }]
+
+responses:
+  utter_greet:
+    - text: "Hello! 👋 Welcome to the Hotel Booking Assistant. I can help you find and book a hotel room. Just say 'book a hotel' to get started!"
+
+  utter_goodbye:
+    - text: "Goodbye! 👋 Have a wonderful trip — feel free to come back anytime you need to book a hotel. Safe travels! ✈️"
+
+  utter_booking_cancelled:
+    - text: "Sorry to see you go! 😊 No worries at all — your booking has been cancelled. Whenever you're ready to book again, I'll be right here. Have a great day!"
+
+  utter_free_chitchat_response:
+    - text: "I'm here specifically to help with hotel bookings! I'd be happy to get started — where would you like to stay?"
+
+  utter_ask_location:
+    - text: "Which city would you like to stay in?"
+
+  utter_ask_check_in:
+    - text: "What is your check-in date? (e.g. 5th Dec, 05/12/2026)"
+
+  utter_ask_check_out:
+    - text: "What is your check-out date? (e.g. 8th Dec, 08/12/2026)"
+
+  utter_ask_num_guests:
+    - text: "How many guests will be staying?"
+
+  utter_ask_num_rooms:
+    - text: "How many rooms do you need?"
+
+  utter_too_many_guests:
+    - text: "I'm sorry, we can only accommodate up to 24 guests per booking. Please enter a smaller number."
+
+  utter_too_many_rooms:
+    - text: "We have a maximum of 10 rooms per booking. How many rooms would you like?"
+
+  utter_date_check_in_before_check_out:
+    - text: "Hmm, your check-out date seems to be before or on the same day as your check-in date. Please enter a check-out date that is after your check-in date."
+
+  utter_date_too_long:
+    - text: "Our maximum booking length is 14 nights. Please choose a shorter stay — your check-out date is too far from your check-in date."
+
+  utter_booking_summary:
+    - text: "Here is your booking summary:\n\n📍 Location:   {location}\n📅 Check-in:   {check_in}\n📅 Check-out:  {check_out}\n👥 Guests:     {num_guests}\n🛏️  Rooms:      {num_rooms}"
+
+  utter_ask_confirm_booking:
+    - text: "Does everything look correct? Reply yes to confirm, or tell me what to change (e.g. 'change check-in to 10th Jan')."
+
+  utter_ask_for_changes:
+    - text: "Sure! Just tell me what you'd like to change, for example: 'change check-in to 10th Jan' or 'update location to Mumbai'."
+
+  utter_invalid_value_for_slot:
+    - text: "Sorry, I didn't catch that. Could you please try again?"
+
+  utter_ask_rephrase:
+    - text: "Sorry, I didn't understand. Could you rephrase that?"
+
+  utter_corrected_previous_input:
+    - text: "Got it! I've updated that for you."
+
+  utter_flow_cancelled:
+    - text: "Sorry to see you go! 😊 Your booking has been cancelled. Come back anytime — I'm always here to help you find the perfect hotel. Have a great day!"
+
+  utter_flow_completed:
+    - text: ""
+
+  utter_flow_completed_final:
+    - text: ""
+
+  utter_continue_without_further_correction:
+    - text: ""
+
+  utter_ask_continue_conversation:
+    - text: ""
+
+  utter_booking_confirmed:
+    - text: "Your booking is confirmed! 🎉 We look forward to welcoming you. Have a great stay!"
+
+actions:
+  - validate_num_guests
+  - validate_num_rooms
+  - validate_confirm_booking
+  - validate_dates
+  - action_format_numbers
+  - action_session_end

@@ -1,0 +1,18 @@
+# Custom Actions Server
+action_endpoint:
+  url: "http://localhost:5055/webhook"
+
+# LLM Model Configuration
+model_groups:
+  - id: rasa_command_generation_model
+    models:
+      - provider: ollama
+        model: ministral-3:latest
+        api_base: http://10.0.0.101:11434
+        temperature: 0.0
+
+  - id: rasa_embeddings_model
+    models:
+      - provider: ollama
+        model: nomic-embed-text:latest
+        api_base: http://10.0.0.101:11434

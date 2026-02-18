@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+venv/
+rasaenv/
+env/
+.venv/
+
+# Rasa specific
+models/
+.rasa/
+*.log
+results/
+graph.html
+
+# IDEs and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
