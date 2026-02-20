@@ -51,16 +51,19 @@ flows:
 
   pattern_cancel_flow:
     description: >
-      Triggered ONLY when the user clearly wants to stop and cancel the current booking process.
-      Phrases that trigger this: 'cancel', 'stop', 'I do not want to book', 'I dont want to book',
-      'forget it', 'never mind', 'I changed my mind', 'exit', 'quit', 'I want to cancel',
-      'I do not want to continue', 'abort'.
-      Do NOT trigger this for general questions or FAQs.
-      This pattern cancels the active flow entirely — no further steps should run after this.
+      Triggered ONLY when the user wants to STOP and ABORT the current booking process
+      right now. Only trigger for very direct commands like: 'cancel', 'stop', 'exit',
+      'quit', 'forget it', 'never mind', 'I changed my mind', 'I do not want to book',
+      'abort'.
+      CRITICAL: Do NOT trigger this for questions ABOUT cancellation policy such as
+      'can i cancel my booking', 'what is the cancellation policy', 'how do I cancel',
+      'is cancellation free'. Those are FAQ questions and must go to pattern_search.
+      Only trigger when the user is clearly commanding the bot to stop the booking
+      process entirely, not when they are asking about hotel cancellation policies.
     name: pattern cancel flow
     steps:
       - action: action_cancel_booking
-
+      
   pattern_end_of_conversation:
     description: "Runs at the end of every conversation. Uses a custom action that returns nothing so no closing message is shown."
     name: pattern end of conversation

@@ -142,7 +142,7 @@ def search_faq(user_question: str) -> Optional[str]:
             best_answer = pair["a"]
 
     # Raised threshold — requires genuine keyword overlap
-    return best_answer if best_score >= 0.35 else None
+    return best_answer if best_score >= 0.42 else None
 
 # ---------------------------------------------------------------------------
 # Unknown question storage
@@ -514,17 +514,18 @@ class ActionFreeChitchat(Action):
     def run(self, dispatcher, tracker, domain):
         user_message = (tracker.latest_message.get("text") or "").strip()
 
-        # If the message looks like a slot answer (single word, a number, 
-        # or a date), don't treat it as a question — just stay silent
+        # Skip pure slot answers: single word without ?, pure numbers, or dates
+        # But allow through anything that looks like a question
         slot_like = (
-            len(user_message.split()) <= 2 or          # "london", "7th may", "4"
-            re.match(r'^\d+$', user_message) or        # pure number
-            re.match(r'^\d+[\/\-]\d+', user_message)  # date like 05/12
+            re.match(r'^\d+$', user_message) or            # pure number: "4", "96"
+            re.match(r'^\d+[\/\-]\d+', user_message) or   # date: "05/12"
+            (len(user_message.split()) == 1 and            # single word like "london", "goa"
+             not user_message.endswith('?'))
         )
         if slot_like:
             return []
 
-        # Try FAQ first — maybe it's a hotel question the LLM mislabelled
+        # Try FAQ first — maybe it's a hotel question the LLM mislabelled as chitchat
         answer = search_faq(user_message)
         if answer:
             dispatcher.utter_message(text=answer)
