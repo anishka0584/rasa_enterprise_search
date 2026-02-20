@@ -1,27 +1,34 @@
 flows:
   pattern_chitchat:
     description: >
-      Handles ONLY purely social messages with absolutely no connection to hotels, travel, rooms,
-      pets, policies, bookings, locations, amenities, dates, or anything hotel-related whatsoever.
-      Examples of genuine chitchat ONLY: 'how are you', 'tell me a joke', 'what is the meaning of life',
-      'who made you', 'what can you do', 'are you a robot'.
-      Do NOT trigger this for ANY hotel or travel related question, no matter how it is phrased.
-      Do NOT trigger this when the user is answering a booking question with a number, date, or location.
-      If in doubt between chitchat and search, always choose search.
+      Handles ONLY messages that are purely social small talk with ZERO connection to hotels,
+      rooms, travel, bookings, amenities, policies, locations, or anything a hotel could offer.
+      ONLY trigger for things like: 'how are you', 'tell me a joke', 'what is the meaning of life',
+      'who made you', 'what can you do', 'are you a robot', 'what is your name'.
+      Do NOT trigger this for ANY question containing words like: hotel, room, wifi, wi-fi,
+      internet, breakfast, pool, gym, parking, pet, dog, cat, check-in, check-out, booking,
+      cancel, pay, price, cost, city, location, guest, family, child, cot, crib, discount,
+      accessible, wheelchair, air conditioning, ac, helicopter, landing, rooftop, bar, spa,
+      restaurant, laundry, shuttle, transfer, airport, taxi, beach, view, floor, balcony,
+      early, late, late checkout, late check-out, noise, quiet, smoking, non-smoking,
+      is there, do you have, do you offer, can i bring, are there, what time, how much,
+      how many, what is, what are, is it, can i, do i, will there, is breakfast, is parking.
+      If the message contains ANY question about what a hotel has, offers, allows, or charges —
+      even if it is not in the FAQ — ALWAYS use pattern_search instead.
+      If in ANY doubt, always choose pattern_search over pattern_chitchat.
     name: pattern chitchat
     steps:
-      - action: utter_free_chitchat_response
+      - action: action_free_chitchat
 
   pattern_search:
     description: >
-      Handles ANY question or query that relates to hotels, travel, rooms, pets, policies,
-      amenities, bookings, locations, or any hotel-related topic — even if a booking flow
-      is currently active. Always prefer this over pattern_chitchat when the question has
-      anything to do with hotels or travel.
-      Trigger this for questions like:
+      Handles ANY question or statement related to hotels, travel, rooms, amenities, policies,
+      bookings, locations, or services — including questions the bot may not know the answer to.
+      ALWAYS prefer this over pattern_chitchat for anything hotel or travel related.
+      Trigger for questions like:
       'can I bring my dog', 'do you allow pets', 'is there a pet fee',
       'is breakfast included', 'what time is check-in', 'what time is check-out',
-      'can I check in early', 'is there parking', 'do you have Wi-Fi',
+      'can I check in early', 'is there parking', 'do you have Wi-Fi', 'is there wifi',
       'what room types are available', 'can I cancel my booking',
       'is there air conditioning', 'are children allowed', 'do you have accessible rooms',
       'what is the cancellation policy', 'how do I pay', 'is there a booking fee',
@@ -29,8 +36,15 @@ flows:
       'can I get a discount', 'do you have cribs', 'what is the maximum stay',
       'how many rooms can I book', 'how many guests can I bring',
       'do you have family rooms', 'is there a pool', 'what hotels do you offer',
-      'how do I modify my booking', 'is my booking confirmed', 'how do I contact support'.
-      When uncertain whether a question is chitchat or search, ALWAYS choose pattern_search.
+      'how do I modify my booking', 'is my booking confirmed', 'how do I contact support',
+      'is there a helicopter landing', 'is there a rooftop bar', 'is there a spa',
+      'is there a restaurant', 'is there a gym', 'is there a shuttle',
+      'is there a laundry service', 'do you have a beach', 'is there a balcony',
+      'is smoking allowed', 'are there quiet rooms', 'what floor are the rooms on',
+      'is there an airport transfer', 'what cities do you cover', 'which city can I book in'.
+      This pattern must also trigger for ANY question the bot does not know — so that
+      unknown questions get logged for the human team to answer.
+      When uncertain between chitchat and search, ALWAYS choose pattern_search.
     name: pattern search
     steps:
       - action: action_trigger_search

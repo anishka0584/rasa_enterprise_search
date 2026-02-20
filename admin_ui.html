@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hotel Bot — Knowledge Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /* ── RESET & BASE ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #13161e;
+      --card:      #181c26;
+      --border:    #252a38;
+      --border-lit:#334060;
+      --accent:    #4f8ef7;
+      --accent-dim:#2a4f9e;
+      --gold:      #f0b429;
+      --gold-dim:  #7a5500;
+      --green:     #34d399;
+      --green-dim: #064e3b;
+      --red:       #f87171;
+      --red-dim:   #7f1d1d;
+      --muted:     #4a5068;
+      --text:      #d4daf0;
+      --text-dim:  #6b7494;
+      --heading:   #eef1fb;
+      --radius:    12px;
+      --radius-sm: 7px;
+      --shadow:    0 4px 30px rgba(0,0,0,.45);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── LAYOUT ───────────────────────────────────────────── */
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      grid-template-columns: 260px 1fr;
+      grid-template-areas:
+        "header header"
+        "sidebar main";
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ───────────────────────────────────────────── */
+    header {
+      grid-area: header;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), #7b5cf6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 19px;
+      color: var(--heading);
+      letter-spacing: -.3px;
+    }
+
+    .logo span {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--text-dim);
+      display: block;
+      margin-top: -4px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border-lit);
+      color: var(--text-dim);
+      border-radius: var(--radius-sm);
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+      transition: all .18s;
+    }
+    .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── SIDEBAR ──────────────────────────────────────────── */
+    aside {
+      grid-area: sidebar;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      padding: 0 16px;
+      margin-bottom: 28px;
+    }
+
+    .sidebar-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 9px 12px;
+      color: var(--text-dim);
+      font-size: 13.5px;
+      font-family: inherit;
+      cursor: pointer;
+      text-align: left;
+      transition: all .15s;
+      position: relative;
+    }
+    .nav-btn:hover { background: var(--card); color: var(--text); }
+    .nav-btn.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .nav-btn .badge {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 20px;
+      padding: 1px 7px;
+      min-width: 22px;
+      text-align: center;
+    }
+    .nav-btn.active .badge { background: var(--accent); }
+
+    .stat-cards {
+      display: grid;
+      gap: 8px;
+      padding: 0 16px;
+    }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+
+    .stat-num {
+      font-family: 'DM Mono', monospace;
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--heading);
+      line-height: 1;
+    }
+
+    .stat-lbl {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* ── MAIN ─────────────────────────────────────────────── */
+    main {
+      grid-area: main;
+      overflow-y: auto;
+      padding: 28px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── PAGE HEADER ──────────────────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 24px;
+      color: var(--heading);
+    }
+
+    .page-subtitle {
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-top: 2px;
+    }
+
+    /* ── FILTERS ──────────────────────────────────────────── */
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .filter-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12.5px;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(79,142,247,.08);
+    }
+
+    .search-bar {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      width: 100%;
+      max-width: 320px;
+      margin-left: auto;
+      outline: none;
+      transition: border-color .18s;
+    }
+    .search-bar:focus { border-color: var(--accent); }
+    .search-bar::placeholder { color: var(--muted); }
+
+    /* ── QUESTION CARDS ───────────────────────────────────── */
+    .question-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .q-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: border-color .18s, box-shadow .18s;
+    }
+    .q-card:hover { border-color: var(--border-lit); box-shadow: var(--shadow); }
+    .q-card.selected { border-color: var(--accent); }
+
+    .q-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .q-text {
+      font-size: 14.5px;
+      color: var(--heading);
+      font-weight: 500;
+      line-height: 1.5;
+      flex: 1;
+    }
+
+    .q-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .tag {
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 20px;
+      padding: 2px 9px;
+      white-space: nowrap;
+    }
+    .tag-pending  { background: rgba(240,180,41,.12); color: var(--gold); border: 1px solid var(--gold-dim); }
+    .tag-answered { background: rgba(52,211,153,.10); color: var(--green); border: 1px solid var(--green-dim); }
+    .tag-cat      { background: rgba(79,142,247,.10); color: var(--accent); border: 1px solid var(--accent-dim); }
+    .tag-count    { background: rgba(255,255,255,.05); color: var(--text-dim); border: 1px solid var(--border); }
+
+    .q-date { font-size: 11px; color: var(--muted); margin-left: auto; }
+
+    /* ── ANSWER PANEL ─────────────────────────────────────── */
+    .answer-panel {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+    .answer-panel.open { display: block; }
+
+    .answer-current {
+      background: rgba(52,211,153,.06);
+      border: 1px solid var(--green-dim);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      font-size: 13.5px;
+      color: var(--text);
+      margin-bottom: 12px;
+      line-height: 1.55;
+    }
+
+    .answer-panel label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .answer-panel select,
+    .answer-panel textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px;
+      padding: 9px 12px;
+      outline: none;
+      transition: border-color .18s;
+      margin-bottom: 12px;
+    }
+    .answer-panel select:focus,
+    .answer-panel textarea:focus { border-color: var(--accent); }
+
+    .answer-panel textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.55;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 8px 18px;
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-primary   { background: var(--accent); color: #fff; }
+    .btn-primary:hover   { background: #3d7ce8; }
+    .btn-danger    { background: rgba(248,113,113,.12); color: var(--red); border: 1px solid var(--red-dim); }
+    .btn-danger:hover    { background: rgba(248,113,113,.22); }
+    .btn-ghost     { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+    .btn-ghost:hover     { border-color: var(--border-lit); color: var(--text); }
+
+    /* ── EMPTY STATE ──────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty .emoji { font-size: 48px; margin-bottom: 12px; }
+    .empty p { font-size: 15px; }
+
+    /* ── TOAST ────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 28px;
+      right: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border-lit);
+      border-radius: var(--radius);
+      padding: 12px 20px;
+      font-size: 13.5px;
+      color: var(--heading);
+      box-shadow: var(--shadow);
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all .3s cubic-bezier(.22,.68,0,1.2);
+      z-index: 999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--green); }
+    #toast.error   { border-color: var(--red); }
+
+    /* ── DASHBOARD ────────────────────────────────────────── */
+    .dash-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .dash-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+    }
+
+    .dash-card .num {
+      font-family: 'DM Mono', monospace;
+      font-size: 38px;
+      font-weight: 500;
+      line-height: 1;
+      color: var(--heading);
+      margin-bottom: 6px;
+    }
+
+    .dash-card .lbl {
+      font-size: 12.5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+    }
+
+    .top-questions h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 17px;
+      color: var(--heading);
+      margin-bottom: 14px;
+    }
+
+    .top-q-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .top-q-rank {
+      font-family: 'DM Mono', monospace;
+      font-size: 18px;
+      color: var(--muted);
+      width: 24px;
+      flex-shrink: 0;
+    }
+
+    .top-q-text { font-size: 13.5px; color: var(--text); flex: 1; }
+
+    .top-q-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--gold);
+      background: rgba(240,180,41,.08);
+      border-radius: 20px;
+      padding: 2px 9px;
+    }
+
+    /* ── SPINNER ──────────────────────────────────────────── */
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin: 40px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SCROLLBAR ────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">🏨</div>
+      <div>
+        <h1>Knowledge Panel</h1>
+        <span>Hotel Booking Bot — Admin</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="refresh-btn" onclick="refreshAll()">⟳ Refresh</button>
+    </div>
+  </header>
+
+  <!-- ── SIDEBAR ── -->
+  <aside>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Navigation</div>
+      <button class="nav-btn active" data-page="dashboard" onclick="showPage('dashboard', this)">
+        📊 Dashboard
+      </button>
+      <button class="nav-btn" data-page="pending" onclick="showPage('pending', this)">
+        ⏳ Pending Questions
+        <span class="badge" id="pending-badge">0</span>
+      </button>
+      <button class="nav-btn" data-page="answered" onclick="showPage('answered', this)">
+        ✅ Answered
+      </button>
+      <button class="nav-btn" data-page="all" onclick="showPage('all', this)">
+        📋 All Questions
+      </button>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Quick Stats</div>
+      <div class="stat-cards">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(240,180,41,.1);font-size:16px">⏳</div>
+          <div>
+            <div class="stat-num" id="s-pending">—</div>
+            <div class="stat-lbl">Pending</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(52,211,153,.1);font-size:16px">✅</div>
+          <div>
+            <div class="stat-num" id="s-answered">—</div>
+            <div class="stat-lbl">Answered</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(79,142,247,.1);font-size:16px">💬</div>
+          <div>
+            <div class="stat-num" id="s-total">—</div>
+            <div class="stat-lbl">Total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Overview of unanswered questions from your hotel bot</div>
+        </div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card">
+          <div class="num" id="d-total">—</div>
+          <div class="lbl">Total Questions Logged</div>
+        </div>
+        <div class="dash-card" style="border-color: var(--gold-dim)">
+          <div class="num" style="color:var(--gold)" id="d-pending">—</div>
+          <div class="lbl">Awaiting Answer</div>
+        </div>
+        <div class="dash-card" style="border-color: var(--green-dim)">
+          <div class="num" style="color:var(--green)" id="d-answered">—</div>
+          <div class="lbl">Learned by Bot</div>
+        </div>
+      </div>
+      <div class="top-questions">
+        <h3>Most Asked Unanswered Questions</h3>
+        <div id="top-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- PENDING -->
+    <div id="page-pending" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Pending Questions</div>
+          <div class="page-subtitle">Questions the bot couldn't answer — answer them to teach the bot</div>
+        </div>
+        <input class="search-bar" type="text" placeholder="Search questions…" oninput="filterList(this.value, 'pending-list')" />
+      </div>
+      <div class="filters" id="pending-filters">
+        <button class="filter-btn active" onclick="setFilter('pending','all',this)">All</button>
+      </div>
+      <div class="question-list" id="pending-list"><div class="spinner"></div></div>
+    </div>
+
+    <!-- ANSWERED -->
+    <div id="page-answered" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Answered Questions</div>
+          <div class="page-subtitle">These answers have been learned by the bot and added to the FAQ</div>
+        </div>
+        <input class="search-bar" type="text" placeholder="Search…" oninput="filterList(this.value, 'answered-list')" />
+      </div>
+      <div class="question-list" id="answered-list"><div class="spinner"></div></div>
+    </div>
+
+    <!-- ALL -->
+    <div id="page-all" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">All Questions</div>
+          <div class="page-subtitle">Complete log of every unknown question asked</div>
+        </div>
+        <input class="search-bar" type="text" placeholder="Search…" oninput="filterList(this.value, 'all-list')" />
+      </div>
+      <div class="filters">
+        <button class="filter-btn active" onclick="setFilter('all','all',this)">All Statuses</button>
+        <button class="filter-btn" onclick="setFilter('all','pending',this)">Pending</button>
+        <button class="filter-btn" onclick="setFilter('all','answered',this)">Answered</button>
+      </div>
+      <div class="question-list" id="all-list"><div class="spinner"></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<!-- ── SCRIPT ── -->
+<script>
+  const API = '';  // same origin — Flask serves both
+  let categories = [];
+  let allData = { pending: [], answered: [], all: [] };
+  let activeFilters = { pending: 'all', all: 'all' };
+  let openCards = {};
+
+  // ── Boot ──────────────────────────────────────────────────
+  async function boot() {
+    categories = await fetch(`${API}/api/categories`).then(r => r.json());
+    buildCategoryFilters();
+    await refreshAll();
+  }
+
+  async function refreshAll() {
+    await Promise.all([loadStats(), loadQuestions()]);
+  }
+
+  // ── Stats ─────────────────────────────────────────────────
+  async function loadStats() {
+    const s = await fetch(`${API}/api/stats`).then(r => r.json());
+    document.getElementById('s-pending').textContent  = s.pending;
+    document.getElementById('s-answered').textContent = s.answered;
+    document.getElementById('s-total').textContent    = s.total;
+    document.getElementById('d-pending').textContent  = s.pending;
+    document.getElementById('d-answered').textContent = s.answered;
+    document.getElementById('d-total').textContent    = s.total;
+    document.getElementById('pending-badge').textContent = s.pending;
+
+    const topEl = document.getElementById('top-list');
+    if (!s.top_questions.length) {
+      topEl.innerHTML = '<div class="empty"><div class="emoji">🎉</div><p>No unanswered questions yet!</p></div>';
+      return;
+    }
+    topEl.innerHTML = s.top_questions.map((q, i) => `
+      <div class="top-q-item">
+        <div class="top-q-rank">${i + 1}</div>
+        <div class="top-q-text">${esc(q.question)}</div>
+        <div class="top-q-count">×${q.asked_count}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── Questions ─────────────────────────────────────────────
+  async function loadQuestions() {
+    const [pending, answered, all] = await Promise.all([
+      fetch(`${API}/api/questions?status=pending`).then(r => r.json()),
+      fetch(`${API}/api/questions?status=answered`).then(r => r.json()),
+      fetch(`${API}/api/questions`).then(r => r.json()),
+    ]);
+    allData.pending  = pending;
+    allData.answered = answered;
+    allData.all      = all;
+    renderList('pending');
+    renderList('answered');
+    renderList('all');
+  }
+
+  function renderList(type) {
+    const el = document.getElementById(`${type}-list`);
+    let items = allData[type];
+    const statusFilter = activeFilters[type];
+
+    if (type === 'all' && statusFilter && statusFilter !== 'all') {
+      items = items.filter(q => q.status === statusFilter);
+    }
+
+    if (!items.length) {
+      el.innerHTML = '<div class="empty"><div class="emoji">✨</div><p>Nothing here yet.</p></div>';
+      return;
+    }
+    el.innerHTML = items.map(q => buildCard(q, type)).join('');
+  }
+
+  function buildCard(q, type) {
+    const isOpen     = openCards[q.id];
+    const statusTag  = q.status === 'answered'
+      ? `<span class="tag tag-answered">✅ Answered</span>`
+      : `<span class="tag tag-pending">⏳ Pending</span>`;
+    const catTag     = `<span class="tag tag-cat">${esc(q.category)}</span>`;
+    const countTag   = `<span class="tag tag-count">Asked ${q.asked_count}×</span>`;
+    const date       = `<span class="q-date">${fmtDate(q.created_at)}</span>`;
+
+    let panel = '';
+    if (isOpen) {
+      const catOpts = categories.map(c =>
+        `<option value="${c}" ${c === q.category ? 'selected' : ''}>${c}</option>`
+      ).join('');
+
+      const answeredBlock = q.answer
+        ? `<div class="answer-current">💡 <strong>Current answer:</strong><br>${esc(q.answer)}</div>`
+        : '';
+
+      panel = `
+        <div class="answer-panel open" id="panel-${q.id}" onclick="event.stopPropagation()">
+          ${answeredBlock}
+          <label>Category</label>
+          <select id="cat-${q.id}">${catOpts}</select>
+          <label>${q.answer ? 'Update Answer' : 'Write Answer'} (will be added to FAQ & bot will learn it)</label>
+          <textarea id="ans-${q.id}" placeholder="Type the answer here…">${esc(q.answer || '')}</textarea>
+          <div class="panel-actions">
+            <button class="btn btn-danger" onclick="deleteQuestion(${q.id}, event)">🗑 Delete</button>
+            <button class="btn btn-ghost" onclick="toggleCard(${q.id}, '${type}')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitAnswer(${q.id}, '${type}')">💾 Save & Teach Bot</button>
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="q-card${isOpen ? ' selected' : ''}" id="card-${q.id}" onclick="toggleCard(${q.id}, '${type}')">
+        <div class="q-card-top">
+          <div class="q-text">${esc(q.question)}</div>
+        </div>
+        <div class="q-meta">
+          ${statusTag}${catTag}${countTag}${date}
+        </div>
+        ${panel}
+      </div>
+    `;
+  }
+
+  function toggleCard(id, type) {
+    openCards[id] = !openCards[id];
+    renderList(type);
+    // Re-render other lists too since answer state may have changed
+    if (type === 'pending')  renderList('all');
+    if (type === 'answered') renderList('all');
+  }
+
+  // ── Submit answer ──────────────────────────────────────────
+  async function submitAnswer(id, type) {
+    const answer = document.getElementById(`ans-${id}`)?.value?.trim();
+    const category = document.getElementById(`cat-${id}`)?.value;
+    if (!answer) { showToast('⚠️ Please write an answer first.', 'error'); return; }
+
+    const res = await fetch(`${API}/api/questions/${id}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answer, category }),
+    });
+
+    if (res.ok) {
+      delete openCards[id];
+      showToast('✅ Answer saved! The bot has learned this.', 'success');
+      await refreshAll();
+    } else {
+      showToast('❌ Failed to save answer.', 'error');
+    }
+  }
+
+  // ── Delete question ────────────────────────────────────────
+  async function deleteQuestion(id, event) {
+    event.stopPropagation();
+    if (!confirm('Delete this question? This cannot be undone.')) return;
+    const res = await fetch(`${API}/api/questions/${id}`, { method: 'DELETE' });
+    if (res.ok) {
+      delete openCards[id];
+      showToast('🗑 Question deleted.', 'success');
+      await refreshAll();
+    }
+  }
+
+  // ── Filters ───────────────────────────────────────────────
+  function buildCategoryFilters() {
+    const el = document.getElementById('pending-filters');
+    const extra = categories.map(c =>
+      `<button class="filter-btn" onclick="setFilter('pending','${c}',this)">${c}</button>`
+    ).join('');
+    el.innerHTML = `<button class="filter-btn active" onclick="setFilter('pending','all',this)">All</button>` + extra;
+  }
+
+  function setFilter(type, value, btn) {
+    activeFilters[type] = value;
+    const parent = btn.closest('.filters');
+    parent.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    if (type === 'pending') {
+      const filtered = value === 'all'
+        ? allData.pending
+        : allData.pending.filter(q => q.category === value);
+      const el = document.getElementById('pending-list');
+      if (!filtered.length) {
+        el.innerHTML = '<div class="empty"><div class="emoji">✨</div><p>Nothing here.</p></div>';
+        return;
+      }
+      el.innerHTML = filtered.map(q => buildCard(q, 'pending')).join('');
+    } else {
+      renderList('all');
+    }
+  }
+
+  function filterList(query, listId) {
+    const q = query.toLowerCase();
+    const cards = document.querySelectorAll(`#${listId} .q-card`);
+    cards.forEach(card => {
+      const text = card.querySelector('.q-text')?.textContent?.toLowerCase() || '';
+      card.style.display = text.includes(q) ? '' : 'none';
+    });
+  }
+
+  // ── Page nav ───────────────────────────────────────────────
+  function showPage(name, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(`page-${name}`).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+
+  // ── Toast ──────────────────────────────────────────────────
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `show ${type}`;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.className = '', 3000);
+  }
+
+  // ── Utils ──────────────────────────────────────────────────
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  boot();
+</script>
+
+</body>
+</html>

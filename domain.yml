@@ -27,9 +27,6 @@ responses:
   utter_goodbye:
     - text: "Goodbye! 👋 Have a wonderful trip — feel free to come back anytime you need to book a hotel. Safe travels! ✈️"
 
-  utter_free_chitchat_response:
-    - text: "I'm here specifically to help with hotel bookings! I'd be happy to get started — where would you like to stay?"
-
   utter_ask_location:
     - text: "Which city would you like to stay in?"
 
@@ -101,3 +98,5 @@ actions:
   - action_format_numbers
   - action_cancel_booking
   - action_session_end
+  - action_trigger_search
+  - action_free_chitchat
