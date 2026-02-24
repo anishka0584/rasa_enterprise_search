@@ -18,22 +18,36 @@ flows:
         description: >
           The city or town the user wants to stay in. A place name like 'Goa', 'London', 'Paris', 'New York'.
           NOT a date. NOT a number. Only a place name counts as a valid answer here.
+          If the user asks an unrelated question (hotel amenity, chitchat, FAQ), do NOT fill
+          this slot. Let pattern_search or pattern_chitchat handle it first, then resume.
+
+      - action: action_check_question
 
       - collect: check_in
         id: step_check_in
         description: >
+          The check-in date. ONLY fill this if the user explicitly mentions a day, month, or specific date. Do not guess.
           The hotel check-in date. The user will give a date in any format such as:
           '5th dec', 'december 5th', '05/12/2026', 'next friday', '4th of july', 'jan 10'.
           ANY date-like answer is a valid check-in date. Do NOT treat date answers as chitchat or off-topic.
           Do NOT trigger pattern_chitchat for date answers.
+          If the user asks an unrelated question (hotel amenity, chitchat, FAQ), do NOT fill
+          this slot. Let pattern_search or pattern_chitchat handle it first, then resume.
+
+      - action: action_check_question
 
       - collect: check_out
         id: step_check_out
         description: >
+          The check-out date. ONLY fill this if the user explicitly mentions a day, month, or specific date. Do not guess.
           The hotel check-out date. The user will give a date in any format such as:
           '8th dec', 'december 8th', '08/12/2026', 'the following monday', 'jan 15'.
           ANY date-like answer is a valid check-out date. Do NOT treat date answers as chitchat or off-topic.
           Do NOT trigger pattern_chitchat for date answers.
+          If the user asks an unrelated question (hotel amenity, chitchat, FAQ), do NOT fill
+          this slot. Let pattern_search or pattern_chitchat handle it first, then resume.
+
+      - action: action_check_question
 
       - action: validate_dates
         id: step_validate_dates
@@ -47,25 +61,63 @@ flows:
       - collect: num_guests
         id: step_num_guests
         description: >
-          The number of guests staying. The user may say '2', 'two', 'just me', 'a family of 4',
-          'three people', 'I think 4 guests', 'about 3'. ANY number or quantity answer is valid,
-          even if the user expresses uncertainty (e.g. 'I think', 'maybe', 'about').
-          Must be 24 or fewer. Do NOT treat number answers as chitchat or off-topic.
+          The number of guests staying.
+          CRITICAL: ANY message that is a number or contains a number IS a valid answer for
+          this slot. This includes bare numbers like '2', '4', '24', '1', '10', word numbers
+          like 'two', 'four', 'just me', phrases like 'a family of 4', 'three people',
+          'I think 4 guests', 'about 3'. NEVER route a number to cannot_handle when
+          this slot is being collected. ALWAYS set this slot for any numeric response.
+          Do NOT treat number answers as chitchat or off-topic.
           Do NOT trigger pattern_chitchat when the user provides a number in this context.
+          IMPORTANT: If the user asks a question unrelated to the number of guests (such as
+          a hotel amenity question, a chitchat statement, or anything that is clearly not a
+          number or quantity) do NOT fill this slot. Let pattern_search or pattern_chitchat
+          handle the message first, then resume collecting this slot.
+
+      - action: action_check_question
+
+      - action: action_validate_guests_now
+        id: step_validate_guests_now
+        next:
+          - if: "slots.num_guests == null"
+            then: "step_num_guests"
+          - else: "step_num_rooms"
 
       - collect: num_rooms
         id: step_num_rooms
         description: >
-          The number of rooms needed. The user may say '1', 'one room', 'two rooms', '3',
-          'I think 4 rooms', 'maybe 2'. ANY number or quantity answer is valid, even if
-          the user expresses uncertainty (e.g. 'I think', 'maybe', 'about').
-          Maximum is 10. Do NOT treat number answers as chitchat or off-topic.
+          The number of rooms needed.
+          CRITICAL: ANY message that is a number or contains a number IS a valid answer for
+          this slot. This includes bare numbers like '1', '2', '10', '5', word numbers like
+          'one room', 'two rooms', phrases like 'I think 4 rooms', 'maybe 2'.
+          NEVER route a number to cannot_handle when this slot is being collected.
+          ALWAYS set this slot for any numeric response.
+          Do NOT treat number answers as chitchat or off-topic.
           Do NOT trigger pattern_chitchat when the user provides a number in this context.
           IMPORTANT: Do NOT infer or assume this value from num_guests or any other slot.
           Only fill this slot if the user has explicitly stated the number of rooms.
+          IMPORTANT: If the user asks ANY question (about hotel amenities, wifi, pizza, movies,
+          or anything unrelated to the number of rooms) do NOT fill this slot. Let
+          pattern_search or pattern_chitchat handle the message first, then return to
+          asking for the number of rooms afterward.
+
+      - action: action_check_question
+
+      - action: action_validate_rooms_now
+        id: step_validate_rooms_now
+        next:
+          - if: "slots.num_rooms == null"
+            then: "step_num_rooms"
+          - else: "step_format_numbers"
 
       - action: action_format_numbers
         id: step_format_numbers
+        next:
+          - if: "slots.num_guests == 'INVALID'"
+            then: "step_num_guests"
+          - if: "slots.num_rooms == 'INVALID'"
+            then: "step_num_rooms"
+          - else: "step_show_summary"
 
       - action: utter_booking_summary
         id: step_show_summary
@@ -75,7 +127,14 @@ flows:
           Ask the user if the booking details are correct.
           If they say yes, correct, looks good, confirm — set to true.
           If they say no, wrong, or request to change a specific detail — set to false.
+          CRITICAL: Do NOT fill this slot if the user says cancel, stop, quit, exit,
+          abort, forget it, never mind, I changed my mind, I want to cancel, cancel booking,
+          cancel my booking, or I do not want to book. These are abort commands and must
+          NEVER be treated as a yes/no confirmation answer. Leave the slot unfilled so
+          the pattern_cancel_flow can handle them instead.
         next:
+          - if: "slots.confirm_booking == 'cancelled'"
+            then: step_booking_cancelled
           - if: "slots.confirm_booking != 'true'"
             then:
               - action: utter_ask_for_changes
@@ -86,3 +145,6 @@ flows:
 
       - action: utter_booking_confirmed
         id: step_booking_confirmed
+
+      - action: action_session_end
+        id: step_booking_cancelled

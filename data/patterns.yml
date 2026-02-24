@@ -1,4 +1,29 @@
 flows:
+  pattern_human_handoff:
+    description: >
+      Triggered ONLY when the user explicitly asks to speak with a human agent or
+      support representative. Exact phrases that must trigger this:
+      'I want to talk to an agent', 'I want to speak to a human',
+      'connect me to an agent', 'I need a human', 'talk to support',
+      'speak to someone', 'I want to talk to a person', 'live agent',
+      'real person', 'human agent', 'I want to speak with an agent'.
+      Do NOT trigger for booking questions, FAQ questions, cancel commands,
+      or anything that is not an explicit request to reach a human.
+    name: pattern human handoff
+    steps:
+      - action: action_human_handoff
+
+  pattern_cannot_handle:
+    description: >
+      Triggered when the LLM cannot determine what to do with the user's message.
+      Instead of immediately showing a rephrase error, this runs a smart fallback
+      action that checks if we are mid-flow collecting a slot (date, number, location)
+      and tries to fill it directly from the user's raw message. Only shows the
+      rephrase error if the message genuinely cannot be used as a slot value.
+    name: pattern cannot handle
+    steps:
+      - action: action_handle_cannot_handle
+
   pattern_chitchat:
     description: >
       Handles ONLY messages that are purely social small talk with ZERO connection to hotels,
@@ -11,6 +36,7 @@ flows:
       accessible, wheelchair, air conditioning, ac, helicopter, landing, rooftop, bar, spa,
       restaurant, laundry, shuttle, transfer, airport, taxi, beach, view, floor, balcony,
       early, late, late checkout, late check-out, noise, quiet, smoking, non-smoking,
+      food, meal, serve, cuisine, dish, eat, dining, menu,
       is there, do you have, do you offer, can i bring, are there, what time, how much,
       how many, what is, what are, is it, can i, do i, will there, is breakfast, is parking.
       If the message contains ANY question about what a hotel has, offers, allows, or charges —
@@ -23,47 +49,64 @@ flows:
   pattern_search:
     description: >
       Handles ANY question or statement related to hotels, travel, rooms, amenities, policies,
-      bookings, locations, or services — including questions the bot may not know the answer to.
+      bookings, locations, services, food, or anything a hotel might offer — including questions
+      the bot may not know the answer to.
       ALWAYS prefer this over pattern_chitchat for anything hotel or travel related.
+      CRITICAL ROUTING RULE: NEVER use pattern_repeat_bot_messages for a question.
+      If the user asks ANY question — even one you do not recognise or cannot answer —
+      ALWAYS route it here so it can be logged. A question is NEVER a repeat request.
+      pattern_repeat_bot_messages is ONLY for explicit repetition requests like:
+      'say that again', 'repeat that', 'what did you say', 'can you repeat', 'pardon'.
+      Any message that ends with '?' or starts with what/where/when/how/is/are/can/do/does/will
+      is a QUESTION and must ALWAYS go to pattern_search, never to pattern_repeat_bot_messages.
       Trigger for questions like:
       'can I bring my dog', 'do you allow pets', 'is there a pet fee',
       'is breakfast included', 'what time is check-in', 'what time is check-out',
       'can I check in early', 'is there parking', 'do you have Wi-Fi', 'is there wifi',
+      'is wifi available', 'is there wifi in the rooms', 'do you have internet',
+      'is there a taxi', 'do you provide taxi services', 'is there taxi available',
+      'is there a shuttle', 'is there airport transfer',
       'what room types are available', 'can I cancel my booking',
       'is there air conditioning', 'are children allowed', 'do you have accessible rooms',
       'what is the cancellation policy', 'how do I pay', 'is there a booking fee',
-      'what locations do you cover', 'which cities can I book in', 'where can I book',
+      'are there any booking fees', 'what locations do you cover',
+      'which cities can I book in', 'where can I book',
       'can I get a discount', 'do you have cribs', 'what is the maximum stay',
       'how many rooms can I book', 'how many guests can I bring',
       'do you have family rooms', 'is there a pool', 'what hotels do you offer',
       'how do I modify my booking', 'is my booking confirmed', 'how do I contact support',
       'is there a helicopter landing', 'is there a rooftop bar', 'is there a spa',
-      'is there a restaurant', 'is there a gym', 'is there a shuttle',
+      'is there a restaurant', 'is there a gym',
       'is there a laundry service', 'do you have a beach', 'is there a balcony',
       'is smoking allowed', 'are there quiet rooms', 'what floor are the rooms on',
-      'is there an airport transfer', 'what cities do you cover', 'which city can I book in'.
+      'what kind of food do you serve', 'what food is available', 'do you serve food',
+      'what cuisine do you offer', 'what meals are available', 'can i bring my pet',
+      'can i bring my cat', 'can i bring my dog', 'do you allow cats'.
       This pattern must also trigger for ANY question the bot does not know — so that
       unknown questions get logged for the human team to answer.
       When uncertain between chitchat and search, ALWAYS choose pattern_search.
+      When uncertain between repeat and search, ALWAYS choose pattern_search.
     name: pattern search
     steps:
       - action: action_trigger_search
 
   pattern_cancel_flow:
     description: >
-      Triggered ONLY when the user wants to STOP and ABORT the current booking process
-      right now. Only trigger for very direct commands like: 'cancel', 'stop', 'exit',
-      'quit', 'forget it', 'never mind', 'I changed my mind', 'I do not want to book',
-      'abort'.
-      CRITICAL: Do NOT trigger this for questions ABOUT cancellation policy such as
-      'can i cancel my booking', 'what is the cancellation policy', 'how do I cancel',
-      'is cancellation free'. Those are FAQ questions and must go to pattern_search.
-      Only trigger when the user is clearly commanding the bot to stop the booking
-      process entirely, not when they are asking about hotel cancellation policies.
+      HIGHEST PRIORITY PATTERN. Triggered when the user wants to stop, abort, or cancel
+      the current booking. MUST trigger for ANY of these exact phrases or close variants:
+      'cancel', 'cancel booking', 'cancel my booking', 'i want to cancel booking',
+      'i want to cancel my booking', 'i want to cancel', 'stop', 'stop the booking',
+      'quit', 'exit', 'abort', 'forget it', 'never mind', 'i changed my mind',
+      'i do not want to book', "i don't want to book", 'drop it', 'end this'.
+      DO NOT route these to human handoff, cannot_handle, or any other pattern.
+      The word 'cancel' in the context of stopping the booking process ALWAYS triggers
+      this pattern. ONLY exception: purely informational questions like
+      'what is the cancellation policy' or 'how do I cancel' go to pattern_search.
     name: pattern cancel flow
     steps:
       - action: action_cancel_booking
-      
+      - action: action_session_end
+
   pattern_end_of_conversation:
     description: "Runs at the end of every conversation. Uses a custom action that returns nothing so no closing message is shown."
     name: pattern end of conversation

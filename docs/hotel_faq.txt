@@ -3,7 +3,14 @@ HOTEL BOOKING ASSISTANT - FAQ KNOWLEDGE BASE
 
 PET POLICY
 
+
+Why do cats fly ?
+Cause it can
+
 Can I bring my dog or pet?
+We are a pet-friendly service and many of our partner hotels welcome dogs and other small pets. However, pet policies vary by property. When you complete your booking, please inform the hotel directly about your pet so they can confirm availability and any applicable pet fee (usually £10-£30 per night). We recommend calling the hotel ahead of your stay.
+
+Can I bring my cat?
 We are a pet-friendly service and many of our partner hotels welcome dogs and other small pets. However, pet policies vary by property. When you complete your booking, please inform the hotel directly about your pet so they can confirm availability and any applicable pet fee (usually £10-£30 per night). We recommend calling the hotel ahead of your stay.
 
 Are there extra charges for pets?
@@ -15,7 +22,7 @@ ROOM TYPES AND AMENITIES
 What types of rooms are available?
 Our partner hotels offer a variety of room types including Standard Single, Standard Double, Twin, Deluxe Double, Family Rooms, Junior Suites, and Suites. Availability depends on the location and property you choose.
 
-Do the rooms have Wi-Fi?
+Do the rooms have wifi?
 Yes, complimentary Wi-Fi is standard across all our partner hotels. High-speed options may be available at a small additional charge in some properties.
 
 Is breakfast included?
@@ -27,9 +34,14 @@ Yes, accessible rooms with wheelchair access, grab rails, and roll-in showers ar
 Is there parking available?
 Parking availability and charges vary by hotel and location. City-centre hotels may charge for parking, while hotels outside city centres often offer free on-site parking. Please check with the hotel directly.
 
+Is there room service?
+Room service availability varies by property. Some of our partner hotels offer 24-hour room service while others may have limited hours or no room service at all. We recommend checking with your specific hotel directly after booking to confirm what food and beverage services are available in your room.
+
 Do rooms have air conditioning?
 Most hotels in warmer climates and newer properties include air conditioning. Older properties, particularly in cooler climates like the UK, may have limited AC. This will be noted in the hotel details.
 
+Do the rooms have a view?
+Room views vary by property and room type. Options may include city views, garden views, sea views, or courtyard views depending on the hotel and location. If a specific view is important to you, we recommend noting it as a special request when contacting the hotel directly after booking — views cannot be guaranteed but hotels will do their best to accommodate
 
 CHECK-IN AND CHECK-OUT
 
@@ -94,6 +106,22 @@ Many hotels provide travel cots or cribs on request, often at no extra charge. P
 GENERAL
 
 
+
+
+
+
+what kind of cuisine do they have?
+Our partner hotels offer a variety of cuisines depending on the property, including local, international, and specialty dishes. Please check with the specific hotel directly to know the exact dining options available.
+
+where should i go?
+wherever you want
+
+which is the best city?
+That depends entirely on your preferences!
+
+can i make special requests?
+Special requests can be noted and are passed on to the hotel, but cannot be guaranteed. We recommend contacting the hotel directly after booking to confirm.
+
 which city is the most fun
 i'd recommend goa at this time of the year!
 
@@ -113,6 +141,30 @@ You can reach our support team via the contact details provided in your booking 
 OTHER
 
 
+
+
+
+
+
+
+who is the best singer
+you are
+
+does this hotel have a bowling alley?
+yes it does
+
+i want to watch a movie
+whatever you want
+
+can i order pizza
+yes you can
+
+do you have a rooftop bar?
+A rooftop bar is not a standard facility across all our partner hotels. Some properties in city-centre locations do offer rooftop bars or terraces. We recommend contacting the hotel directly after booking to confirm whether this facility is available at your chosen property.
+
+which cities are hotels available in?
+We cover hotels across major cities and tourist destinations worldwide. Simply tell us your destination when booking and we will help you find availability.
+
 does this hotel have a helicopter landing?
 Helicopter landing facilities are not a standard offering across our partner hotels. This is a specialist facility that very few properties provide. We recommend contacting the hotel directly after booking to enquire about this.
 
@@ -122,5 +174,33 @@ yes, the hotel has an inclusive spa
 
 ROOM TYPES & AMENITIES
 
+
+
+
+are there facilities for disabled people?
+Yes, our hotel provides facilities for disabled guests, including wheelchair access, accessible rooms, and assistance services.
+
+is there free wifi
+yes there is
+
+do you provide taxi service to the airport?
+Many of our partner hotels offer airport transfers and local taxi arrangements upon request. We recommend contacting your hotel directly after booking to enquire about transfer options available in your area.
+
 what are the facilities provided?
 Our hotels offer a range of facilities including complimentary Wi-Fi, parking (subject to availability), air conditioning, and a variety of room types. Many properties also feature a gym, pool, restaurant, and accessible rooms. Specific facilities vary by property — please check with the hotel directly after booking to confirm what is available at your chosen location.
+
+
+BOOKING RULES
+
+
+which city can i book a hotel in?
+We cover hotels across major cities and tourist destinations worldwide. Simply tell us your destination when booking and we will help you find availability.
+
+what is the maximum number of days i can book for?
+Bookings are limited to a maximum of 14 nights per reservation. For longer stays, please contact our support team.
+
+
+PAYMENT & PRICING
+
+are there any discounts?
+We do not charge any booking fees and offer competitive rates across all our partner hotels. For group bookings of 5 or more rooms or corporate accounts, please contact our support team for tailored pricing. Seasonal promotions and loyalty discounts may also be available directly through the hotel.

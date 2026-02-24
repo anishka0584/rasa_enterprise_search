@@ -43,10 +43,10 @@ responses:
     - text: "How many rooms do you need?"
 
   utter_too_many_guests:
-    - text: "I'm sorry, we can only accommodate up to 24 guests per booking. Please enter a smaller number."
+    - text: "Sorry, we can only accommodate up to 24 guests per booking. How many guests will be staying? (max 24)"
 
   utter_too_many_rooms:
-    - text: "We have a maximum of 10 rooms per booking. How many rooms would you like?"
+    - text: "Sorry, we can only book a maximum of 10 rooms at a time. How many rooms do you need? (max 10)"
 
   utter_date_check_in_before_check_out:
     - text: "Hmm, your check-out date seems to be before or on the same day as your check-in date. Please enter a check-out date that is after your check-in date."
@@ -91,8 +91,8 @@ responses:
     - text: "Your booking is confirmed! 🎉 We look forward to welcoming you. Have a great stay!"
 
 actions:
-  - validate_num_guests
-  - validate_num_rooms
+  - action_validate_num_guests
+  - action_validate_num_rooms
   - validate_confirm_booking
   - validate_dates
   - action_format_numbers
@@ -100,3 +100,8 @@ actions:
   - action_session_end
   - action_trigger_search
   - action_free_chitchat
+  - action_check_question
+  - action_validate_guests_now
+  - action_validate_rooms_now
+  - action_handle_cannot_handle
+  - action_human_handoff
