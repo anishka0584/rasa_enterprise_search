@@ -13,9 +13,6 @@ from rasa_sdk.events import SlotSet, AllSlotsReset
 # ---------------------------------------------------------------------------
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# Resolve project root as the folder containing this actions/ directory.
-# Using __file__ (not os.getcwd()) makes this robust regardless of what
-# directory 'rasa run actions' is invoked from.
 _PROJECT_ROOT = os.path.normpath(os.path.join(BASE_DIR, ".."))
 DB_PATH  = os.path.join(_PROJECT_ROOT, "unknown_questions.db")
 FAQ_PATH = os.path.join(_PROJECT_ROOT, "docs", "hotel_faq.txt")
@@ -62,7 +59,6 @@ def load_faq_text() -> str:
 
 
 def parse_faq_pairs(faq_text: str) -> List[Dict[str, str]]:
-    """Parse hotel_faq.txt into a list of {q, a} dicts."""
     pairs = []
     current_q = None
     current_a = []
@@ -72,7 +68,6 @@ def parse_faq_pairs(faq_text: str) -> List[Dict[str, str]]:
         if not stripped:
             continue
 
-        # Section headers are short ALL-CAPS lines — skip them
         if stripped.isupper() and len(stripped.split()) <= 6:
             if current_q and current_a:
                 pairs.append({"q": current_q, "a": " ".join(current_a).strip()})
@@ -80,9 +75,6 @@ def parse_faq_pairs(faq_text: str) -> List[Dict[str, str]]:
             current_a = []
             continue
 
-        # Treat a line as a question/entry if it ends with "?" (standard FAQ format)
-        # OR is a short statement-style entry without "?" like "can i order pizza"
-        # or "i want to watch a movie". These exist in the FAQ as valid entries.
         is_question_line = (
             len(stripped) < 250 and
             not stripped.isupper() and
@@ -121,8 +113,6 @@ def search_faq(user_question: str) -> Optional[str]:
     if not qa_pairs:
         return None
 
-    # Synonym groups — any word in a group matches any other in the same group.
-    # Keep groups tight: overly broad synonyms cause wrong matches.
     SYNONYMS: List[set] = [
         {"wifi", "internet", "wireless"},
         {"taxi", "cab"},
@@ -142,7 +132,6 @@ def search_faq(user_question: str) -> Optional[str]:
     ]
 
     def tokenize_text(text: str) -> set:
-        # Normalise hyphens so "wi-fi" → "wifi", "check-in" → "checkin"
         text = re.sub(r'(\w)-(\w)', r'\1\2', text)
         return set(re.findall(r"\w+", text.lower()))
 
@@ -154,7 +143,6 @@ def search_faq(user_question: str) -> Optional[str]:
                     expanded |= group
         return expanded
 
-    # Words too generic to be useful for matching — cause wrong FAQ hits
     stop_words = {
         "i", "a", "an", "the", "is", "are", "there", "do", "you",
         "have", "can", "what", "which", "how", "in", "at", "to",
@@ -178,11 +166,9 @@ def search_faq(user_question: str) -> Optional[str]:
         if not raw_user or not raw_faq:
             continue
 
-        # Bidirectional synonym intersection — only count terms present in at
-        # least one side raw (prevents pure-synonym ghost matches)
         intersection = (exp_user & exp_faq) & (raw_user | raw_faq)
         union        = raw_user | raw_faq
-        jaccard      = len(intersection) / len(union)   if union     else 0.0
+        jaccard      = len(intersection) / len(union)    if union    else 0.0
         precision    = len(intersection) / len(raw_user) if raw_user else 0.0
 
         seq = difflib.SequenceMatcher(
@@ -195,8 +181,9 @@ def search_faq(user_question: str) -> Optional[str]:
             best_score  = score
             best_answer = pair["a"]
 
-    # 0.28 threshold — works well with synonym expansion + bidirectional scoring
     return best_answer if best_score >= 0.28 else None
+
+
 CATEGORY_KEYWORDS = {
     "Pet Policy": ["pet", "dog", "cat", "animal"],
     "Room Types & Amenities": ["room", "wifi", "ac", "bed", "view", "facility"],
@@ -208,6 +195,7 @@ CATEGORY_KEYWORDS = {
     "General": ["where", "which", "what"],
     "Other": []
 }
+
 
 def classify_question(question: str) -> str:
     q = question.lower()
@@ -247,16 +235,10 @@ def store_unknown_question(question: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Shared question handler — used by ALL question-handling actions
+# Shared question handler
 # ---------------------------------------------------------------------------
 
 def handle_question(user_message: str, dispatcher: CollectingDispatcher) -> bool:
-    """
-    Look up user_message in the FAQ. If found, reply with the answer.
-    If not found, store it in the DB for the admin and send an acknowledgement.
-    Returns True if the message was handled (answered or stored), False if empty.
-    Always handles the message regardless of whether a flow is active.
-    """
     if not user_message:
         return False
 
@@ -277,15 +259,13 @@ def handle_question(user_message: str, dispatcher: CollectingDispatcher) -> bool
 
 def is_question(text: str) -> bool:
     """
-    Heuristic to decide if a user message is a genuine question or statement
-    rather than a plain slot answer (a date, number, city name, yes/no etc.)
-    or a flow-trigger phrase (book a hotel, find me a room, etc.).
+    Returns True if text is a genuine FAQ question/statement,
+    False if it is a slot answer, booking trigger, correction, or cancel phrase.
     """
     t = text.strip().lower()
     if not t:
         return False
 
-    # Flow-trigger phrases — these start the booking flow, not questions to answer
     booking_triggers = {
         "book a hotel", "book hotel", "book a room", "book room",
         "i want to book", "i want a hotel", "i want a room",
@@ -297,8 +277,6 @@ def is_question(text: str) -> bool:
     if any(t == trigger or t.startswith(trigger) for trigger in booking_triggers):
         return False
 
-    # Correction/update phrases — slot corrections mid-flow, not FAQ questions.
-    # These trigger pattern_correction and must never fire handle_question.
     correction_prefixes = (
         "change ", "update ", "switch ", "set ", "make it ",
         "correct ", "i meant ", "actually ",
@@ -313,7 +291,6 @@ def is_question(text: str) -> bool:
         if t.startswith(prefix):
             return False
 
-    # Cancel/abort phrases — handled by pattern_cancel_flow, not FAQ
     cancel_prefixes = (
         "cancel", "stop the booking", "i want to cancel",
         "i don't want to book", "i do not want to book",
@@ -323,31 +300,24 @@ def is_question(text: str) -> bool:
         if t.startswith(prefix):
             return False
 
-    # Plain slot answers — not questions
     slot_patterns = [
-        r'^\d+$',                          # bare number: "4"
-        r'^\d+[\/\-]\d+',                  # date fragment: "05/12"
-        r'^\d+(st|nd|rd|th)',              # ordinal: "5th"
+        r'^\d+$',
+        r'^\d+[\/\-]\d+',
+        r'^\d+(st|nd|rd|th)',
         r'^(yes|no|yeah|nope|yep|nah|ok|okay|sure|correct|confirm|confirmed)$',
     ]
     for pat in slot_patterns:
         if re.match(pat, t, re.IGNORECASE):
             return False
 
-    # Compound slot answers — comma-separated values like "4 rooms, 8 people, in goa"
-    # or "goa, 5th dec, 8 guests". These are multi-slot answers, never FAQ questions.
-    # Detect: message contains commas AND has numbers mixed with words (no question words).
     if "," in t:
-        # Strip commas and check if all meaningful tokens are slot-answer material
         no_comma = re.sub(r"[,]", " ", t)
         tokens_nc = no_comma.split()
         question_words = {"what","when","where","who","why","how","which","is","are",
                           "do","does","can","could","will","would","should","have","has"}
-        # If none of the tokens are question words, treat as compound slot answer
         if not any(tok in question_words for tok in tokens_nc):
             return False
 
-    # Explicit question markers
     question_starters = (
         "what", "when", "where", "who", "why", "how", "which",
         "is ", "are ", "do ", "does ", "can ", "could ", "will ",
@@ -360,9 +330,6 @@ def is_question(text: str) -> bool:
         if t.startswith(starter):
             return True
 
-    # Statement-style FAQ entries without "?" (e.g. "can i order pizza",
-    # "i want to watch a movie"). These are 3+ words that aren't slot answers
-    # or booking triggers.
     words = t.split()
     if len(words) >= 3:
         date_words = {"jan","feb","mar","apr","may","jun","jul","aug",
@@ -382,103 +349,7 @@ def is_question(text: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# ActionTriggerSearch — called by pattern_search
-# ---------------------------------------------------------------------------
-
-class ActionTriggerSearch(Action):
-
-    def name(self) -> Text:
-        return "action_trigger_search"
-
-    def run(
-        self,
-        dispatcher: CollectingDispatcher,
-        tracker:    Tracker,
-        domain:     Dict[Text, Any],
-    ) -> List[Dict[Text, Any]]:
-
-        user_message = (tracker.latest_message.get("text") or "").strip()
-        handle_question(user_message, dispatcher)
-        return []
-
-
-# ---------------------------------------------------------------------------
-# ActionCheckQuestion — injected after every collect step in flows.yml
-# Intercepts any question the user asks mid-flow and answers/logs it,
-# regardless of which slot is currently being collected.
-# ---------------------------------------------------------------------------
-
-class ActionCheckQuestion(Action):
-
-    CANCEL_PHRASES = (
-        "cancel booking", "cancel my booking", "i want to cancel booking",
-        "i want to cancel my booking", "i want to cancel", "cancel",
-        "stop the booking", "stop booking", "abort", "forget it",
-        "never mind", "i changed my mind", "i do not want to book",
-        "i don't want to book", "drop it", "end this", "quit", "exit",
-    )
-
-    def name(self) -> Text:
-        return "action_check_question"
-
-    HUMAN_AGENT_PHRASES = (
-        "talk to an agent", "speak to an agent", "speak with an agent",
-        "talk to a human", "speak to a human", "speak with a human",
-        "talk to a person", "speak to a person", "connect me to an agent",
-        "i want an agent", "i need an agent", "human agent", "real person",
-        "live agent", "talk to support", "speak to support",
-        "talk to someone", "speak to someone",
-        "i want to talk to", "i want to speak to", "i want to speak with",
-    )
-
-    def run(
-        self,
-        dispatcher: CollectingDispatcher,
-        tracker:    Tracker,
-        domain:     Dict[Text, Any],
-    ) -> List[Dict[Text, Any]]:
-
-        user_message = (tracker.latest_message.get("text") or "").strip()
-        t = user_message.lower()
-
-        # --- Human agent request ---
-        if any(phrase in t for phrase in self.HUMAN_AGENT_PHRASES):
-            dispatcher.utter_message(
-                text="I understand you'd like to speak with a human agent. "
-                     "Unfortunately, live agent support isn't available right now. "
-                     "Please contact us directly at support@hotel.com or call +1-800-HOTEL. "
-                     "Is there anything else I can help you with?"
-            )
-            return []
-
-        # --- Cancel interception ---
-        if any(t == p or t.startswith(p) for p in self.CANCEL_PHRASES):
-            dispatcher.utter_message(
-                text="Sorry to see you go! 😊 Your booking has been cancelled. "
-                     "Come back anytime — I'm always here to help you find the perfect hotel. "
-                     "Have a great day!"
-            )
-            return [AllSlotsReset(), SlotSet("confirm_booking", "cancelled")]
-
-        # Don't fire FAQ handler if a pattern_correction or pattern_repeat is active.
-        try:
-            stack = tracker.stack or []
-            for frame in stack:
-                if isinstance(frame, dict) and frame.get("type") in (
-                    "pattern_correction", "pattern_repeat_bot_messages"
-                ):
-                    return []
-        except Exception:
-            pass
-
-        if is_question(user_message):
-            handle_question(user_message, dispatcher)
-
-        return []
-
-
-# ---------------------------------------------------------------------------
-# Helpers
+# Helpers: number parsing, date parsing
 # ---------------------------------------------------------------------------
 
 def parse_number(value: Any) -> Optional[int]:
@@ -519,6 +390,20 @@ DATE_FORMATS = [
 
 ORDINAL_RE = re.compile(r'(\d+)(st|nd|rd|th)', re.IGNORECASE)
 
+_MONTH_RE = re.compile(
+    r'\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|'
+    r'jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b',
+    re.IGNORECASE
+)
+
+# Keywords that identify a message as a booking trigger (used when scanning events)
+_BOOKING_TRIGGER_KEYWORDS = (
+    "book a hotel", "book hotel", "book a room", "book room",
+    "i want to book", "i want a hotel", "find me a hotel", "find a hotel",
+    "hotel booking", "make a booking", "make a reservation",
+    "i need a hotel", "i need a room", "get me a hotel",
+)
+
 
 def normalise_date_string(raw: str) -> str:
     s = ORDINAL_RE.sub(r'\1', raw)
@@ -528,16 +413,8 @@ def normalise_date_string(raw: str) -> str:
 
 
 def strip_llm_garbage(raw: str) -> str:
-    """
-    Strip common garbage the LLM prepends to slot values, e.g.:
-    'to "25th Dec'  →  '25th Dec'
-    'to "5th Jan'   →  '5th Jan'
-    'set to 5 Jan'  →  '5 Jan'
-    """
     s = raw.strip()
-    # Remove leading: to ", to ', set to, changed to, update to, etc.
     s = re.sub(r'^(changed?\s+to|updated?\s+to|set\s+to|to)\s*["\']?', '', s, flags=re.IGNORECASE)
-    # Remove stray leading quotes/punctuation
     s = re.sub(r'^["\'\s]+', '', s)
     return s.strip()
 
@@ -545,7 +422,6 @@ def strip_llm_garbage(raw: str) -> str:
 def try_parse_date(raw: str) -> Optional[datetime]:
     if not raw:
         return None
-    # Strip LLM garbage before parsing
     raw = strip_llm_garbage(str(raw))
     cleaned = normalise_date_string(raw)
     today   = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -563,44 +439,195 @@ def try_parse_date(raw: str) -> Optional[datetime]:
     return None
 
 
+def get_booking_trigger_message(tracker: Tracker) -> str:
+    """
+    Find the user message that triggered the book_hotel flow.
+
+    THE CORE FIX for the 'hi → book a hotel from X to Y' bug:
+
+    When the user says 'hi' first, the bot greets them. Then the user says
+    'book a hotel from 4th to 6th jan for 5 people'. By the time
+    action_check_question runs (after collect: location asks "Which city?"),
+    tracker.latest_message may already be the CITY answer, not the booking
+    trigger. The trigger is one or more events back in tracker.events.
+
+    This function walks tracker.events newest-first and returns the most recent
+    user message that looks like a booking trigger. Falls back to
+    latest_message if none is found.
+    """
+    latest = (tracker.latest_message.get("text") or "").strip()
+
+    # Fast path: current message IS the trigger
+    if any(kw in latest.lower() for kw in _BOOKING_TRIGGER_KEYWORDS):
+        return latest
+
+    # Walk events newest-first to find the trigger
+    try:
+        for event in reversed(tracker.events):
+            if event.get("event") != "user":
+                continue
+            text = (event.get("text") or "").strip()
+            if any(kw in text.lower() for kw in _BOOKING_TRIGGER_KEYWORDS):
+                return text
+    except Exception:
+        pass
+
+    return latest
+
+
+def extract_slots_from_text(text: str) -> Dict[str, Optional[str]]:
+    """
+    Parse a natural-language booking message and extract any slot values it
+    contains using pure regex — no LLM required. Returns a dict with keys:
+    check_in, check_out, num_guests, num_rooms, location. Values are
+    formatted strings or None.
+
+    Handles phrases like:
+      'book a hotel from 4th to 6th jan for 5 people'
+      'i want a room in goa from 4th jan to 9th jan for 3 people 2 rooms'
+      'book from 1st to 7th march for 4 guests 2 rooms in paris'
+      'hotel in london 5th dec to 10th dec'
+    """
+    result: Dict[str, Optional[str]] = {
+        "check_in":  None,
+        "check_out": None,
+        "num_guests": None,
+        "num_rooms":  None,
+        "location":   None,
+    }
+
+    t = text.strip()
+
+    # --- Dates: "from/between X to/and Y" ---
+    date_patterns = [
+        r'(?:from|between)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)\s+(?:to|and|-)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)',
+        r'(\d+(?:st|nd|rd|th)?)\s+(?:to|-)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)',
+    ]
+    for pat in date_patterns:
+        m = re.search(pat, t, re.IGNORECASE)
+        if m:
+            raw_in  = m.group(1).strip()
+            raw_out = m.group(2).strip()
+
+            # Borrow month between the two sides if one is missing it
+            if not _MONTH_RE.search(raw_in):
+                mm = _MONTH_RE.search(raw_out)
+                if mm:
+                    raw_in = raw_in + " " + mm.group()
+
+            if not _MONTH_RE.search(raw_out):
+                mm = _MONTH_RE.search(raw_in)
+                if mm:
+                    raw_out = raw_out + " " + mm.group()
+
+            d_in  = try_parse_date(raw_in)
+            d_out = try_parse_date(raw_out)
+
+            if d_in and d_out and d_out > d_in:
+                result["check_in"]  = d_in.strftime("%d/%m/%Y")
+                result["check_out"] = d_out.strftime("%d/%m/%Y")
+            break
+
+    # --- num_rooms: "X room(s)" — check before guests to avoid misparse ---
+    rooms_m = re.search(
+        r'\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+rooms?\b',
+        t, re.IGNORECASE
+    )
+    if rooms_m:
+        n = parse_number(rooms_m.group(1))
+        if n and 1 <= n <= 10:
+            result["num_rooms"] = str(n)
+
+    # --- num_guests: "for X people/guests" or "X people/guests" ---
+    guests_m = re.search(
+        r'\bfor\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten|'
+        r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|'
+        r'nineteen|twenty(?:\s+\w+)?|just me|myself)\s*(?:people|guests?|persons?|adults?|pax)?\b',
+        t, re.IGNORECASE
+    )
+    if not guests_m:
+        guests_m = re.search(
+            r'\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)'
+            r'\s+(?:people|guests?|persons?|adults?|pax)\b',
+            t, re.IGNORECASE
+        )
+    if guests_m:
+        n = parse_number(guests_m.group(1))
+        if n and 1 <= n <= 24:
+            result["num_guests"] = str(n)
+
+    # --- location: "in <city>" ---
+    location_m = re.search(
+        r'\bin\s+([A-Za-z][a-zA-Z\s]{1,29}?)(?:\s+from|\s+for|\s+\d|\s+on\b|,|$)',
+        t, re.IGNORECASE
+    )
+    if location_m:
+        loc = location_m.group(1).strip()
+        # Reject if it's a month name alone or starts with a digit
+        if loc and not re.match(r'^\d', loc) and not _MONTH_RE.fullmatch(loc):
+            result["location"] = loc.title()
+
+    return result
+
+
 # ---------------------------------------------------------------------------
-# Slot validators
+# Hallucination detection
 # ---------------------------------------------------------------------------
 
-# Markers that identify LLM-hallucinated garbage slot values.
-# These must be silently nulled and NEVER passed to handle_question/store_unknown_question.
 _HALLUCINATION_MARKERS = (
-    "undefined", " # ", "wait for", "before setting",
-    "explicit confirmation", "do not fill", "never fill",
+    "undefined",
+    " # ",
+    "#",
+    "wait for",
+    "before setting",
+    "explicit confirmation",
+    "do not fill",
+    "never fill",
+    "not provided yet",
+    'null"',
+    "null'",
+    "not yet",
+    "placeholder",
+    "to be filled",
+    "leave blank",
+    "leave null",
+    "tbd",
 )
+
+
+def is_hallucinated(value) -> bool:
+    """Return True if a slot value is LLM-hallucinated garbage."""
+    if not value or not isinstance(value, str):
+        return False
+    rv = value.strip().lower()
+    if not rv:
+        return False
+    if any(marker in rv for marker in _HALLUCINATION_MARKERS):
+        return True
+    if rv.startswith("null") and len(rv) > 4:
+        return True
+    if re.match(r'^["\']?(null|undefined)["\']?\s*[,;#\s]', rv):
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# _intercept_question helper
+# ---------------------------------------------------------------------------
 
 def _intercept_question(raw_slot_value, tracker, dispatcher) -> bool:
     """
     Called at the top of every slot validator.
-    If the user's actual message (or the garbled slot value the LLM produced)
-    looks like a question, answer/log it via handle_question() and return True
-    so the validator knows to null the slot silently without re-asking.
-    The flow's own utter_ask_* will fire on the next turn automatically.
+    Returns True if the slot should be nulled (hallucination or genuine question).
     """
-    # Guard: if the slot value is LLM-hallucinated garbage (copied from slot description),
-    # null it silently — NEVER log it as an unknown question.
-    # This catches "undefined\"  # Wait for explicit confirmation before setting" etc.
-    if raw_slot_value and isinstance(raw_slot_value, str):
-        rv = raw_slot_value.strip().lower()
-        if any(marker in rv for marker in _HALLUCINATION_MARKERS):
-            return True   # signal: null the slot, stay completely silent
+    if is_hallucinated(raw_slot_value):
+        return True
 
-    # The real user message always takes priority over the slot value.
-    # IMPORTANT: only call handle_question if the message is a genuine question —
-    # never for plain slot answers like dates, numbers, or city names.
     user_message = (tracker.latest_message.get("text") or "").strip()
     if is_question(user_message):
         handle_question(user_message, dispatcher)
         return True
 
-    # Fallback: sometimes the LLM stuffs the user question into the slot value
-    # (e.g. num_guests = "is there a taxi?"). Catch that too.
-    # But NEVER call handle_question on a value that looks like a slot answer.
     if raw_slot_value and isinstance(raw_slot_value, str):
         val = raw_slot_value.strip()
         if is_question(val) and not parse_number(val):
@@ -610,6 +637,149 @@ def _intercept_question(raw_slot_value, tracker, dispatcher) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# ActionTriggerSearch — called by pattern_search
+# ---------------------------------------------------------------------------
+
+class ActionTriggerSearch(Action):
+
+    def name(self) -> Text:
+        return "action_trigger_search"
+
+    def run(self, dispatcher, tracker, domain):
+        user_message = (tracker.latest_message.get("text") or "").strip()
+        handle_question(user_message, dispatcher)
+        return []
+
+
+# ---------------------------------------------------------------------------
+# ActionCheckQuestion
+#
+# Runs after every collect step in flows.yml. Responsibilities:
+#   1. Human-agent and cancel interception
+#   2. Sanitise hallucinated slot values from initial LLM extraction
+#   3. Pre-fill missing slots from the booking trigger message via regex.
+#      Uses get_booking_trigger_message() which scans tracker.events to find
+#      the trigger even when prior turns (hi, chitchat) preceded it.
+#      This is the fix for: hi → greet → "book hotel from 4th to 6th jan for 5 people"
+#      not pre-filling dates/guests.
+#   4. Answer FAQ questions asked mid-flow
+# ---------------------------------------------------------------------------
+
+class ActionCheckQuestion(Action):
+
+    CANCEL_PHRASES = (
+        "cancel booking", "cancel my booking", "i want to cancel booking",
+        "i want to cancel my booking", "i want to cancel", "cancel",
+        "stop the booking", "stop booking", "abort", "forget it",
+        "never mind", "i changed my mind", "i do not want to book",
+        "i don't want to book", "drop it", "end this", "quit", "exit",
+    )
+
+    HUMAN_AGENT_PHRASES = (
+        "talk to an agent", "speak to an agent", "speak with an agent",
+        "talk to a human", "speak to a human", "speak with a human",
+        "talk to a person", "speak to a person", "connect me to an agent",
+        "i want an agent", "i need an agent", "human agent", "real person",
+        "live agent", "talk to support", "speak to support",
+        "talk to someone", "speak to someone",
+        "i want to talk to", "i want to speak to", "i want to speak with",
+    )
+
+    def name(self) -> Text:
+        return "action_check_question"
+
+    def run(self, dispatcher, tracker, domain):
+
+        user_message = (tracker.latest_message.get("text") or "").strip()
+        t = user_message.lower()
+
+        # 1. Human agent request
+        if any(phrase in t for phrase in self.HUMAN_AGENT_PHRASES):
+            dispatcher.utter_message(
+                text="I understand you'd like to speak with a human agent. "
+                     "Unfortunately, live agent support isn't available right now. "
+                     "Please contact us directly at support@hotel.com or call +1-800-HOTEL. "
+                     "Is there anything else I can help you with?"
+            )
+            return []
+
+        # 2. Cancel interception
+        if any(t == p or t.startswith(p) for p in self.CANCEL_PHRASES):
+            dispatcher.utter_message(
+                text="Sorry to see you go! 😊 Your booking has been cancelled. "
+                     "Come back anytime — I'm always here to help you find the perfect hotel. "
+                     "Have a great day!"
+            )
+            return [AllSlotsReset(), SlotSet("confirm_booking", "cancelled")]
+
+        # 3. Sanitise hallucinated garbage slot values.
+        #    IMPORTANT: only emit SlotSet(slot, None) when the slot currently holds
+        #    a non-null hallucinated value. If it is already null, emitting
+        #    SlotSet(slot, None) still creates a slot_was_set event in the tracker,
+        #    which causes Rasa's pattern_collect_information to treat that slot as
+        #    "touched this turn" and skip the utter_ask_* question entirely.
+        cleanup_events = []
+        for slot_name in ("location", "check_in", "check_out", "num_guests", "num_rooms"):
+            val = tracker.get_slot(slot_name)
+            if val is not None and is_hallucinated(val):
+                cleanup_events.append(SlotSet(slot_name, None))
+
+        # Determine which slots are null after cleanup (candidates for pre-filling).
+        # A slot is a candidate if it was null already OR we just nulled it above.
+        cleaned_names = {e["name"] for e in cleanup_events}
+        null_slots = set()
+        for slot_name in ("location", "check_in", "check_out", "num_guests", "num_rooms"):
+            val = tracker.get_slot(slot_name)
+            if val is None or slot_name in cleaned_names:
+                null_slots.add(slot_name)
+
+        # 4. Pre-fill missing slots from the booking trigger message using regex.
+        #
+        #    get_booking_trigger_message() scans tracker.events backwards to find
+        #    the message that triggered book_hotel, even if it was not the most
+        #    recent turn (e.g. after a prior "hi" greeting exchange).
+        #
+        #    CRITICAL: Never pre-fill `location` here.
+        #    `action_check_question` runs AFTER `collect: location` — meaning the
+        #    flow already entered the location collect step, decided location was null,
+        #    and is waiting for it. If we emit SlotSet("location", <value>) now, the
+        #    collect machinery sees a slot event for location in this turn and skips
+        #    asking the question. Since the user didn't provide a city, we must leave
+        #    location null so the bot correctly asks "Which city?".
+        #    Location can only be pre-filled if the user actually said it in their
+        #    message (e.g. "book a hotel in goa from...") — in that case the LLM
+        #    extractor will have already set it before we get here, so it won't be
+        #    in null_slots anyway.
+        PRE_FILL_SLOTS = {"check_in", "check_out", "num_guests", "num_rooms"}
+
+        if null_slots & PRE_FILL_SLOTS:
+            trigger_text = get_booking_trigger_message(tracker)
+            extracted    = extract_slots_from_text(trigger_text)
+            for slot_name, value in extracted.items():
+                if value and slot_name in null_slots and slot_name in PRE_FILL_SLOTS:
+                    cleanup_events.append(SlotSet(slot_name, value))
+
+        # 5. FAQ handler — skip when inside a correction/repeat pattern
+        try:
+            for frame in (tracker.stack or []):
+                if isinstance(frame, dict) and frame.get("type") in (
+                    "pattern_correction", "pattern_repeat_bot_messages"
+                ):
+                    return cleanup_events
+        except Exception:
+            pass
+
+        if is_question(user_message):
+            handle_question(user_message, dispatcher)
+
+        return cleanup_events
+
+
+# ---------------------------------------------------------------------------
+# Slot validators
+# ---------------------------------------------------------------------------
+
 class ValidateNumGuests(Action):
 
     def name(self) -> Text:
@@ -618,9 +788,6 @@ class ValidateNumGuests(Action):
     def run(self, dispatcher, tracker, domain):
         raw = tracker.get_slot("num_guests")
 
-        # CRITICAL FALLBACK: if LLM routed the message to cannot_handle and
-        # never set the slot, try to parse the raw user message directly.
-        # This catches cases where bare numbers like "4", "24" go to cannot_handle.
         user_text = (tracker.latest_message.get("text") or "").strip()
         if raw is None and user_text:
             n = parse_number(user_text)
@@ -652,7 +819,6 @@ class ValidateNumRooms(Action):
     def run(self, dispatcher, tracker, domain):
         raw = tracker.get_slot("num_rooms")
 
-        # CRITICAL FALLBACK: read raw user message if LLM never set the slot
         user_text = (tracker.latest_message.get("text") or "").strip()
         if raw is None and user_text:
             n = parse_number(user_text)
@@ -698,20 +864,13 @@ class ValidateConfirmBooking(Action):
     )
 
     def run(self, dispatcher, tracker, domain):
-        raw = tracker.get_slot("confirm_booking")
+        raw       = tracker.get_slot("confirm_booking")
         user_text = (tracker.latest_message.get("text") or "").strip()
-        t = user_text.lower()
+        t         = user_text.lower()
 
-        # Guard: silently null any LLM-hallucinated garbage value before anything else.
-        # Ollama copies slot description text verbatim, e.g.:
-        #   "undefined\"  # Wait for explicit confirmation before setting"
-        # This must never reach _intercept_question or be logged as an unknown question.
-        if raw and isinstance(raw, str):
-            rv = raw.strip().lower()
-            if any(marker in rv for marker in _HALLUCINATION_MARKERS):
-                return [SlotSet("confirm_booking", None)]
+        if is_hallucinated(raw):
+            return [SlotSet("confirm_booking", None)]
 
-        # Human agent request at confirmation step
         if any(phrase in t for phrase in self.HUMAN_AGENT_PHRASES):
             dispatcher.utter_message(
                 text="I understand you'd like to speak with a human agent. "
@@ -721,7 +880,6 @@ class ValidateConfirmBooking(Action):
             )
             return []
 
-        # Cancel detection at confirmation step
         if any(t == p or t.startswith(p) for p in self.CANCEL_DETECT):
             dispatcher.utter_message(
                 text="Sorry to see you go! 😊 Your booking has been cancelled. "
@@ -733,8 +891,6 @@ class ValidateConfirmBooking(Action):
         if raw is None:
             return []
 
-        # Pass the cancelled sentinel straight through so the flow's next
-        # condition can route to step_booking_cancelled without re-asking.
         if str(raw).strip().lower() == "cancelled":
             return [SlotSet("confirm_booking", "cancelled")]
 
@@ -771,23 +927,26 @@ class ValidateDates(Action):
         if raw_in is None or raw_out is None:
             return []
 
-        # If slot value is LLM garbage that won't parse, fall back to the actual
-        # user message text for the slot that was just collected this turn.
-        # We detect which slot was just filled by checking which one changed.
-        user_text = (tracker.latest_message.get("text") or "").strip()
+        if is_hallucinated(raw_in):
+            return [SlotSet("check_in", None)]
+        if is_hallucinated(raw_out):
+            return [SlotSet("check_out", None)]
 
         date_in  = try_parse_date(raw_in)
         date_out = try_parse_date(raw_out)
 
-        # If check_in failed to parse and user_text looks like a date, use it
-        if date_in is None and user_text:
+        # Apply user_text fallback only to the ONE slot that failed to parse.
+        # Never apply to both — that causes check_in = check_out = user_text
+        # which triggers an infinite "must be after" validation loop.
+        user_text = (tracker.latest_message.get("text") or "").strip()
+
+        if date_in is None and date_out is not None and user_text:
             fallback = try_parse_date(user_text)
             if fallback:
                 date_in = fallback
                 raw_in  = user_text
 
-        # If check_out failed to parse and user_text looks like a date, use it
-        if date_out is None and user_text:
+        elif date_out is None and date_in is not None and user_text:
             fallback = try_parse_date(user_text)
             if fallback:
                 date_out = fallback
@@ -812,8 +971,7 @@ class ValidateDates(Action):
         if events:
             return events
 
-        # Cross-year fix: if check-out landed before check-in (e.g. check-in Feb 2027,
-        # check-out "5 jan" parsed as Jan 2026/2027 before Feb), try the next year.
+        # Cross-year fix
         if date_in >= date_out:
             advanced = date_out.replace(year=date_out.year + 1)
             if advanced > date_in:
@@ -841,7 +999,6 @@ class ValidateDates(Action):
 
 
 class ActionValidateGuestsNow(Action):
-    """Validates num_guests immediately after collect — before flow advances."""
 
     def name(self) -> Text:
         return "action_validate_guests_now"
@@ -849,8 +1006,6 @@ class ActionValidateGuestsNow(Action):
     def run(self, dispatcher, tracker, domain):
         raw = tracker.get_slot("num_guests")
 
-        # Fallback: if validator couldn't save the slot through collect machinery,
-        # try the raw user message one more time
         user_text = (tracker.latest_message.get("text") or "").strip()
         if raw is None and user_text and not is_question(user_text):
             n = parse_number(user_text)
@@ -870,7 +1025,6 @@ class ActionValidateGuestsNow(Action):
 
 
 class ActionValidateRoomsNow(Action):
-    """Validates num_rooms immediately after collect — before flow advances."""
 
     def name(self) -> Text:
         return "action_validate_rooms_now"
@@ -878,8 +1032,6 @@ class ActionValidateRoomsNow(Action):
     def run(self, dispatcher, tracker, domain):
         raw = tracker.get_slot("num_rooms")
 
-        # Fallback: if validator couldn't save the slot through collect machinery,
-        # try the raw user message one more time
         user_text = (tracker.latest_message.get("text") or "").strip()
         if raw is None and user_text and not is_question(user_text):
             n = parse_number(user_text)
@@ -906,10 +1058,6 @@ class ActionFormatNumbers(Action):
     def run(self, dispatcher, tracker, domain):
         events = []
 
-        # Validate num_guests
-        # Use "INVALID" sentinel so pattern_collect_information doesn't fire a
-        # separate re-ask on top of our combined error+re-ask utter message.
-        # The flow's next condition checks for "INVALID" and loops back to collect.
         guests_raw = tracker.get_slot("num_guests")
         if guests_raw is not None and guests_raw != "INVALID":
             guests = parse_number(guests_raw)
@@ -921,7 +1069,6 @@ class ActionFormatNumbers(Action):
             else:
                 events.append(SlotSet("num_guests", str(guests)))
 
-        # Validate num_rooms
         rooms_raw = tracker.get_slot("num_rooms")
         if rooms_raw is not None and rooms_raw != "INVALID":
             rooms = parse_number(rooms_raw)
@@ -936,6 +1083,10 @@ class ActionFormatNumbers(Action):
         return events
 
 
+# ---------------------------------------------------------------------------
+# ActionSessionEnd
+# ---------------------------------------------------------------------------
+
 class ActionSessionEnd(Action):
 
     def name(self) -> Text:
@@ -944,6 +1095,10 @@ class ActionSessionEnd(Action):
     def run(self, dispatcher, tracker, domain):
         return []
 
+
+# ---------------------------------------------------------------------------
+# ActionCancelBooking
+# ---------------------------------------------------------------------------
 
 class ActionCancelBooking(Action):
 
@@ -956,24 +1111,14 @@ class ActionCancelBooking(Action):
                  "Come back anytime — I'm always here to help you find the perfect hotel. "
                  "Have a great day!"
         )
-        # Set confirm_booking to "cancelled" sentinel so that if pattern_collect_information
-        # resumes after this interrupting pattern ends, the flow's next condition
-        # routes to step_booking_cancelled (silent action_session_end) instead of
-        # re-asking the confirmation question. AllSlotsReset alone doesn't stop
-        # the collect frame from resuming and re-uttering utter_ask_confirm_booking.
         return [AllSlotsReset(), SlotSet("confirm_booking", "cancelled")]
 
 
+# ---------------------------------------------------------------------------
+# ActionHandleCannotHandle — called by pattern_cannot_handle
+# ---------------------------------------------------------------------------
+
 class ActionHandleCannotHandle(Action):
-    """
-    Intercepts pattern_cannot_handle when the LLM fails to route a valid
-    slot answer (date, number, city name) and instead routes it to cannot_handle.
-    
-    Checks what slot is currently being collected and tries to fill it directly
-    from the raw user message. If the message looks like a valid slot value,
-    fills the slot and stays silent (the flow will advance normally).
-    If not a valid slot value, falls back to utter_ask_rephrase.
-    """
 
     def name(self) -> Text:
         return "action_handle_cannot_handle"
@@ -991,7 +1136,6 @@ class ActionHandleCannotHandle(Action):
         "drop it", "end this",
     }
 
-    # Phrases that mean the user explicitly wants a human agent
     HUMAN_AGENT_PHRASES = (
         "talk to an agent", "speak to an agent", "speak with an agent",
         "talk to a human", "speak to a human", "speak with a human",
@@ -1007,7 +1151,6 @@ class ActionHandleCannotHandle(Action):
         user_text = (tracker.latest_message.get("text") or "").strip()
         t = user_text.lower()
 
-        # 1. Human agent request — show before everything else
         if any(phrase in t for phrase in self.HUMAN_AGENT_PHRASES):
             dispatcher.utter_message(
                 text="I understand you'd like to speak with a human agent. "
@@ -1017,7 +1160,6 @@ class ActionHandleCannotHandle(Action):
             )
             return []
 
-        # 2. Cancel commands
         if any(t == p or t.startswith(p) for p in self.CANCEL_PHRASES):
             dispatcher.utter_message(
                 text="Sorry to see you go! 😊 Your booking has been cancelled. "
@@ -1026,14 +1168,13 @@ class ActionHandleCannotHandle(Action):
             )
             return [AllSlotsReset(), SlotSet("confirm_booking", "cancelled")]
 
-        # 3. Try to fill the currently collected slot from the raw user message
         collected_slot = self._get_current_collect_slot(tracker)
 
         if collected_slot:
             if collected_slot in self.DATE_SLOTS:
                 parsed = try_parse_date(user_text)
                 if parsed:
-                    return [SlotSet(collected_slot, user_text)]
+                    return [SlotSet(collected_slot, parsed.strftime("%d/%m/%Y"))]
 
             elif collected_slot in self.NUMBER_SLOTS:
                 n = parse_number(user_text)
@@ -1050,20 +1191,14 @@ class ActionHandleCannotHandle(Action):
                 if user_text and not is_question(user_text) and len(user_text.split()) <= 5:
                     return [SlotSet(collected_slot, user_text.title())]
 
-        # 4. Answer FAQ / log unknown question — covers human_handoff misrouting
         if is_question(user_text):
             handle_question(user_text, dispatcher)
             return []
 
-        # 5. Genuine cannot-handle — show rephrase
         dispatcher.utter_message(response="utter_ask_rephrase")
         return []
 
     def _get_current_collect_slot(self, tracker) -> Optional[str]:
-        """
-        Walk the dialogue stack to find the innermost pattern_collect_information
-        frame and return its 'collect' field (the slot currently being asked for).
-        """
         try:
             stack = tracker.stack
             if not stack:
@@ -1074,13 +1209,13 @@ class ActionHandleCannotHandle(Action):
         except Exception:
             pass
         return None
-    
+
+
+# ---------------------------------------------------------------------------
+# ActionHumanHandoff — called by pattern_human_handoff
+# ---------------------------------------------------------------------------
+
 class ActionHumanHandoff(Action):
-    """
-    Called by pattern_human_handoff when user explicitly asks for a human agent.
-    Shows a message explaining that live support is unavailable and provides
-    contact details. Only triggers for genuine agent requests, not FAQ questions.
-    """
 
     HUMAN_AGENT_PHRASES = (
         "talk to an agent", "speak to an agent", "speak with an agent",
@@ -1098,8 +1233,6 @@ class ActionHumanHandoff(Action):
     def run(self, dispatcher, tracker, domain):
         user_text = (tracker.latest_message.get("text") or "").strip().lower()
 
-        # Only show the human handoff message if this really is an agent request.
-        # If the LLM incorrectly routed a FAQ question here, answer it instead.
         if any(phrase in user_text for phrase in self.HUMAN_AGENT_PHRASES):
             dispatcher.utter_message(
                 text="I understand you'd like to speak with a human agent. "
@@ -1109,12 +1242,10 @@ class ActionHumanHandoff(Action):
             )
             return []
 
-        # LLM misrouted a FAQ question to human handoff — answer it properly
         if is_question(tracker.latest_message.get("text", "")):
             handle_question(tracker.latest_message.get("text", ""), dispatcher)
             return []
 
-        # Fallback for anything else that ends up here
         dispatcher.utter_message(
             text="I understand you'd like to speak with a human agent. "
                  "Unfortunately, live agent support isn't available right now. "
@@ -1123,13 +1254,11 @@ class ActionHumanHandoff(Action):
         return []
 
 
+# ---------------------------------------------------------------------------
+# ActionFreeChitchat — called by pattern_chitchat
+# ---------------------------------------------------------------------------
+
 class ActionFreeChitchat(Action):
-    """
-    Called by pattern_chitchat. Delegates entirely to handle_question() —
-    the same logic used by pattern_search and action_check_question.
-    If the message looks like a plain slot answer (double-tagged by the LLM),
-    is_question() will return False and we stay silent.
-    """
 
     def name(self) -> Text:
         return "action_free_chitchat"
@@ -1143,74 +1272,43 @@ class ActionFreeChitchat(Action):
 
 # ---------------------------------------------------------------------------
 # ActionApplyCorrection — called by pattern_correction
-# Parses a correction command like "change location to Goa" or
-# "update check-in to 10th Jan" and sets the relevant slot directly,
-# without relying on the LLM to extract the value.
 # ---------------------------------------------------------------------------
 
 class ActionApplyCorrection(Action):
-    """
-    Handles mid-flow slot corrections.
-
-    Supported phrases (examples):
-      change location to London
-      update check-in to 10th Jan
-      set rooms to 3
-      change city to Paris
-      update guests to 4
-      change check-out to 8th Dec
-    """
 
     def name(self) -> Text:
         return "action_apply_correction"
 
-    # Maps canonical slot names to the regex aliases the user might say
     SLOT_ALIASES: Dict[str, List[str]] = {
-        "location":  ["location", "city", "destination", "place", "town"],
-        "check_in":  ["check.?in", "checkin", "arrival", "arriving", "start date", "from date", "from"],
-        "check_out": ["check.?out", "checkout", "departure", "leaving", "end date", "to date", "until"],
+        "location":   ["location", "city", "destination", "place", "town"],
+        "check_in":   ["check.?in", "checkin", "arrival", "arriving", "start date", "from date", "from"],
+        "check_out":  ["check.?out", "checkout", "departure", "leaving", "end date", "to date", "until"],
         "num_guests": ["guests?", "people", "persons?", "adults?", "travell?ers?", "number of guests?"],
         "num_rooms":  ["rooms?", "number of rooms?"],
     }
 
-    # Verb prefixes the user might use
     _VERB = r"(?:change|update|set|make|correct|switch|i (?:want to )?change|can you change|please change)"
     _THE  = r"(?:the |my )?"
 
     def _build_pattern(self) -> re.Pattern:
-        """Build a single regex that matches any correction command."""
-        alias_groups = []
+        parts = []
         for slot, aliases in self.SLOT_ALIASES.items():
             group = "(?:" + "|".join(aliases) + ")"
-            alias_groups.append((slot, group))
-
-        # e.g.  change [the] <slot_alias> to <value>
-        #        set <slot_alias> to <value>
-        parts = []
-        for slot, group in alias_groups:
-            parts.append(
-                rf"(?P<slot_{slot.replace('-','_')}>{group})"
-            )
-
-        all_slots = "|".join(p for p in parts)
-        pattern_str = (
-            rf"^{self._VERB}\s+{self._THE}(?:{all_slots})\s+to\s+(?P<value>.+)$"
-        )
+            parts.append(rf"(?P<slot_{slot.replace('-','_')}>{group})")
+        all_slots   = "|".join(parts)
+        pattern_str = rf"^{self._VERB}\s+{self._THE}(?:{all_slots})\s+to\s+(?P<value>.+)$"
         return re.compile(pattern_str, re.IGNORECASE)
 
     def run(self, dispatcher, tracker, domain):
-        user_text = (tracker.latest_message.get("text") or "").strip()
-        t = user_text.lower()
-
+        user_text  = (tracker.latest_message.get("text") or "").strip()
+        t          = user_text.lower()
         slot_name  = None
         slot_value = None
 
         try:
-            pattern = self._build_pattern()
-            m = pattern.match(user_text)
+            m = self._build_pattern().match(user_text)
             if m:
                 slot_value = (m.group("value") or "").strip()
-                # Find which named group matched
                 for slot in self.SLOT_ALIASES:
                     gname = f"slot_{slot.replace('-', '_')}"
                     try:
@@ -1222,7 +1320,6 @@ class ActionApplyCorrection(Action):
         except Exception as e:
             print(f"[ActionApplyCorrection] regex error: {e}")
 
-        # Fallback: simpler keyword scan if regex didn't match
         if not slot_name or not slot_value:
             slot_name, slot_value = self._fallback_parse(t, user_text)
 
@@ -1234,51 +1331,31 @@ class ActionApplyCorrection(Action):
             )
             return []
 
-        # Normalise value for date / number slots
         events = self._build_slot_events(slot_name, slot_value, dispatcher)
-
         if events:
             dispatcher.utter_message(response="utter_corrected_previous_input")
-
         return events
 
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-
     def _fallback_parse(self, t: str, original: str):
-        """
-        Simple keyword scan as a fallback when the main regex fails.
-        Returns (slot_name, raw_value) or (None, None).
-        """
-        # Detect "to <value>" at the end
         to_match = re.search(r'\bto\s+(.+)$', original, re.IGNORECASE)
         if not to_match:
             return None, None
-        value = to_match.group(1).strip()
-
-        # Which slot keyword appears before "to"?
+        value     = to_match.group(1).strip()
         before_to = original[: to_match.start()].lower()
 
-        ordered_checks = [
-            ("check_in",  ["check-in", "checkin", "arrival", "check in", "arriving"]),
-            ("check_out", ["check-out", "checkout", "departure", "check out", "leaving"]),
-            ("num_guests",["guest", "guests", "people", "person", "persons", "traveler", "travellers"]),
-            ("num_rooms", ["room", "rooms"]),
-            ("location",  ["location", "city", "destination", "place", "town"]),
-        ]
-
-        for slot, keywords in ordered_checks:
+        for slot, keywords in [
+            ("check_in",   ["check-in", "checkin", "arrival", "check in", "arriving"]),
+            ("check_out",  ["check-out", "checkout", "departure", "check out", "leaving"]),
+            ("num_guests", ["guest", "guests", "people", "person", "persons", "traveler", "travellers"]),
+            ("num_rooms",  ["room", "rooms"]),
+            ("location",   ["location", "city", "destination", "place", "town"]),
+        ]:
             if any(kw in before_to for kw in keywords):
                 return slot, value
 
         return None, None
 
-    def _build_slot_events(
-        self, slot_name: str, raw_value: str, dispatcher: CollectingDispatcher
-    ) -> List[Dict[Text, Any]]:
-        """Validate and normalise the value, then return a SlotSet event list."""
-
+    def _build_slot_events(self, slot_name: str, raw_value: str, dispatcher: CollectingDispatcher):
         if slot_name in ("check_in", "check_out"):
             parsed = try_parse_date(raw_value)
             if parsed is None:
@@ -1304,12 +1381,9 @@ class ActionApplyCorrection(Action):
                 return []
             return [SlotSet(slot_name, str(n))]
 
-        else:  # location — text slot
-            # Capitalise each word for a clean display value
+        else:
             clean = raw_value.strip().title()
             if not clean:
-                dispatcher.utter_message(
-                    text="I couldn't understand the location. Please try again."
-                )
+                dispatcher.utter_message(text="I couldn't understand the location. Please try again.")
                 return []
             return [SlotSet(slot_name, clean)]

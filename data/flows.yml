@@ -16,11 +16,12 @@ flows:
       - collect: location
         id: step_location
         description: >
-          The city or town the user wants to stay in. A place name like 'Goa', 'London', 'Paris', 'New York'.
-          NOT a date. NOT a number. Only a place name counts as a valid answer here.
-          If the user asks an unrelated question (hotel amenity, chitchat, FAQ), do NOT fill
-          this slot. Let pattern_search or pattern_chitchat handle it first, then resume.
-
+          The city or town the user wants to stay in. A place name like 'Goa', 'London',
+          'Paris', 'New York'. NOT a date. NOT a number. Only a place name counts as a
+          valid answer here. If the user has not explicitly stated a city name in their
+          message, set this slot to null — do NOT infer, guess, or copy from context.
+          If the user asks an unrelated question (hotel amenity, chitchat, FAQ), do NOT 
+          fill this slot. Let pattern_search or pattern_chitchat handle it first, then resume.
       - action: action_check_question
 
       - collect: check_in
