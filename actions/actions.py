@@ -736,8 +736,15 @@ class ActionCheckQuestion(Action):
         #    SlotSet(slot, None) still creates a slot_was_set event in the tracker,
         #    which causes Rasa's pattern_collect_information to treat that slot as
         #    "touched this turn" and skip the utter_ask_* question entirely.
+        #
+        #    CRITICAL: Never clean up `location` here. action_check_question runs
+        #    immediately after `collect: location`, so if we emit SlotSet("location", None)
+        #    the tracker sees a slot_was_set event for location this turn and Rasa's
+        #    pattern_collect_information skips asking "Which city?" entirely.
+        #    Location hallucination is handled by ValidateLocation instead, which runs
+        #    inside the collect step where the skip behaviour is intentional.
         cleanup_events = []
-        for slot_name in ("location", "check_in", "check_out", "num_guests", "num_rooms"):
+        for slot_name in ("check_in", "check_out", "num_guests", "num_rooms"):
             val = tracker.get_slot(slot_name)
             if val is not None and is_hallucinated(val):
                 cleanup_events.append(SlotSet(slot_name, None))
@@ -859,6 +866,35 @@ class ValidateNumRooms(Action):
         return [SlotSet("num_rooms", str(rooms))]
 
 
+class ValidateLocation(Action):
+    """
+    Runs inside the collect: location step (wired via flows.yml).
+    Clears hallucinated location values so Rasa re-asks the question.
+
+    WHY THIS EXISTS:
+    action_check_question cannot safely emit SlotSet("location", None) because
+    it runs *after* the collect step exits — any slot_was_set event for location
+    at that point tricks Rasa's pattern_collect_information into skipping
+    utter_ask_location. This validator runs *inside* the collect step, so the
+    skip behaviour is correct: if we null it here Rasa will ask again.
+    """
+
+    def name(self) -> Text:
+        return "validate_location"
+
+    def run(self, dispatcher, tracker, domain):
+        val = tracker.get_slot("location")
+        if val is None:
+            return []
+        if is_hallucinated(val):
+            return [SlotSet("location", None)]
+        # Basic sanity: reject if it looks like a date or a bare number
+        v = val.strip()
+        if re.match(r'^\d', v) or try_parse_date(v):
+            return [SlotSet("location", None)]
+        return []
+
+
 class ValidateConfirmBooking(Action):
 
     def name(self) -> Text:
@@ -920,11 +956,23 @@ class ValidateConfirmBooking(Action):
         no_values  = {"false", "no", "nope", "nah", "wrong", "incorrect",
                       "change", "update", "edit", "not right"}
 
-        normalised = str(raw).strip().lower()
+        # Strip LLM prefix garbage like "to true", "set to true", "changed to yes"
+        normalised = re.sub(
+            r'^(set\s+to|changed?\s+to|updated?\s+to|to)\s+', '', str(raw).strip().lower()
+        ).strip()
 
         if normalised in yes_values:
             return [SlotSet("confirm_booking", "true")]
         if normalised in no_values:
+            return [SlotSet("confirm_booking", "false")]
+
+        # Fallback: check the user's actual message directly.
+        # This catches cases where the LLM garbles the slot value entirely
+        # but the user plainly said "yes" or "no".
+        user_lower = t.strip()
+        if user_lower in yes_values or user_lower.startswith("yes") or user_lower.startswith("yeah"):
+            return [SlotSet("confirm_booking", "true")]
+        if user_lower in no_values or user_lower.startswith("no"):
             return [SlotSet("confirm_booking", "false")]
 
         return [SlotSet("confirm_booking", None)]

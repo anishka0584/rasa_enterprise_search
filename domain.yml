@@ -94,6 +94,7 @@ actions:
   - action_apply_correction
   - action_validate_num_guests
   - action_validate_num_rooms
+  - validate_location
   - validate_confirm_booking
   - validate_dates
   - action_format_numbers
