@@ -166,6 +166,10 @@ OTHER
 
 
 
+
+does it have a pool?
+some locations do.  check the website for more info
+
 are you a bot?
 yes i am a hotel booking bot.
 

@@ -1139,3 +1139,177 @@ class ActionFreeChitchat(Action):
         if is_question(user_message):
             handle_question(user_message, dispatcher)
         return []
+
+
+# ---------------------------------------------------------------------------
+# ActionApplyCorrection — called by pattern_correction
+# Parses a correction command like "change location to Goa" or
+# "update check-in to 10th Jan" and sets the relevant slot directly,
+# without relying on the LLM to extract the value.
+# ---------------------------------------------------------------------------
+
+class ActionApplyCorrection(Action):
+    """
+    Handles mid-flow slot corrections.
+
+    Supported phrases (examples):
+      change location to London
+      update check-in to 10th Jan
+      set rooms to 3
+      change city to Paris
+      update guests to 4
+      change check-out to 8th Dec
+    """
+
+    def name(self) -> Text:
+        return "action_apply_correction"
+
+    # Maps canonical slot names to the regex aliases the user might say
+    SLOT_ALIASES: Dict[str, List[str]] = {
+        "location":  ["location", "city", "destination", "place", "town"],
+        "check_in":  ["check.?in", "checkin", "arrival", "arriving", "start date", "from date", "from"],
+        "check_out": ["check.?out", "checkout", "departure", "leaving", "end date", "to date", "until"],
+        "num_guests": ["guests?", "people", "persons?", "adults?", "travell?ers?", "number of guests?"],
+        "num_rooms":  ["rooms?", "number of rooms?"],
+    }
+
+    # Verb prefixes the user might use
+    _VERB = r"(?:change|update|set|make|correct|switch|i (?:want to )?change|can you change|please change)"
+    _THE  = r"(?:the |my )?"
+
+    def _build_pattern(self) -> re.Pattern:
+        """Build a single regex that matches any correction command."""
+        alias_groups = []
+        for slot, aliases in self.SLOT_ALIASES.items():
+            group = "(?:" + "|".join(aliases) + ")"
+            alias_groups.append((slot, group))
+
+        # e.g.  change [the] <slot_alias> to <value>
+        #        set <slot_alias> to <value>
+        parts = []
+        for slot, group in alias_groups:
+            parts.append(
+                rf"(?P<slot_{slot.replace('-','_')}>{group})"
+            )
+
+        all_slots = "|".join(p for p in parts)
+        pattern_str = (
+            rf"^{self._VERB}\s+{self._THE}(?:{all_slots})\s+to\s+(?P<value>.+)$"
+        )
+        return re.compile(pattern_str, re.IGNORECASE)
+
+    def run(self, dispatcher, tracker, domain):
+        user_text = (tracker.latest_message.get("text") or "").strip()
+        t = user_text.lower()
+
+        slot_name  = None
+        slot_value = None
+
+        try:
+            pattern = self._build_pattern()
+            m = pattern.match(user_text)
+            if m:
+                slot_value = (m.group("value") or "").strip()
+                # Find which named group matched
+                for slot in self.SLOT_ALIASES:
+                    gname = f"slot_{slot.replace('-', '_')}"
+                    try:
+                        if m.group(gname):
+                            slot_name = slot
+                            break
+                    except IndexError:
+                        continue
+        except Exception as e:
+            print(f"[ActionApplyCorrection] regex error: {e}")
+
+        # Fallback: simpler keyword scan if regex didn't match
+        if not slot_name or not slot_value:
+            slot_name, slot_value = self._fallback_parse(t, user_text)
+
+        if not slot_name or not slot_value:
+            dispatcher.utter_message(
+                text="Sorry, I couldn't understand what you'd like to change. "
+                     "Try something like: 'change location to London' or "
+                     "'update check-in to 5th Jan'."
+            )
+            return []
+
+        # Normalise value for date / number slots
+        events = self._build_slot_events(slot_name, slot_value, dispatcher)
+
+        if events:
+            dispatcher.utter_message(response="utter_corrected_previous_input")
+
+        return events
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    def _fallback_parse(self, t: str, original: str):
+        """
+        Simple keyword scan as a fallback when the main regex fails.
+        Returns (slot_name, raw_value) or (None, None).
+        """
+        # Detect "to <value>" at the end
+        to_match = re.search(r'\bto\s+(.+)$', original, re.IGNORECASE)
+        if not to_match:
+            return None, None
+        value = to_match.group(1).strip()
+
+        # Which slot keyword appears before "to"?
+        before_to = original[: to_match.start()].lower()
+
+        ordered_checks = [
+            ("check_in",  ["check-in", "checkin", "arrival", "check in", "arriving"]),
+            ("check_out", ["check-out", "checkout", "departure", "check out", "leaving"]),
+            ("num_guests",["guest", "guests", "people", "person", "persons", "traveler", "travellers"]),
+            ("num_rooms", ["room", "rooms"]),
+            ("location",  ["location", "city", "destination", "place", "town"]),
+        ]
+
+        for slot, keywords in ordered_checks:
+            if any(kw in before_to for kw in keywords):
+                return slot, value
+
+        return None, None
+
+    def _build_slot_events(
+        self, slot_name: str, raw_value: str, dispatcher: CollectingDispatcher
+    ) -> List[Dict[Text, Any]]:
+        """Validate and normalise the value, then return a SlotSet event list."""
+
+        if slot_name in ("check_in", "check_out"):
+            parsed = try_parse_date(raw_value)
+            if parsed is None:
+                dispatcher.utter_message(
+                    text=f"I couldn't understand the date '{raw_value}'. "
+                         "Please use a format like '5 Dec 2026' or '05/12/2026'."
+                )
+                return []
+            return [SlotSet(slot_name, parsed.strftime("%d/%m/%Y"))]
+
+        elif slot_name in ("num_guests", "num_rooms"):
+            n = parse_number(raw_value)
+            if n is None:
+                dispatcher.utter_message(
+                    text=f"I couldn't understand the number '{raw_value}'. Please give a plain number."
+                )
+                return []
+            if slot_name == "num_guests" and n > 24:
+                dispatcher.utter_message(response="utter_too_many_guests")
+                return []
+            if slot_name == "num_rooms" and n > 10:
+                dispatcher.utter_message(response="utter_too_many_rooms")
+                return []
+            return [SlotSet(slot_name, str(n))]
+
+        else:  # location — text slot
+            # Capitalise each word for a clean display value
+            clean = raw_value.strip().title()
+            if not clean:
+                dispatcher.utter_message(
+                    text="I couldn't understand the location. Please try again."
+                )
+                return []
+            return [SlotSet(slot_name, clean)]
