@@ -90,6 +90,18 @@ flows:
     steps:
       - action: action_trigger_search
 
+  pattern_correction:
+    description: >
+      Triggered when the user wants to change a booking detail mid-flow,
+      for example: 'change location to goa', 'update check-in to 10th jan',
+      'can you change city to paris', 'set rooms to 3'.
+      action_apply_correction parses the command with regex so Ollama does not
+      need to extract the slot value — it will always work reliably.
+    name: pattern correction
+    steps:
+      - action: action_apply_correction
+      - action: utter_booking_summary
+
   pattern_cancel_flow:
     description: >
       HIGHEST PRIORITY PATTERN. Triggered when the user wants to stop, abort, or cancel

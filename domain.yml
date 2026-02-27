@@ -91,6 +91,7 @@ responses:
     - text: "Your booking is confirmed! 🎉 We look forward to welcoming you. Have a great stay!"
 
 actions:
+  - action_apply_correction
   - action_validate_num_guests
   - action_validate_num_rooms
   - validate_confirm_booking

@@ -124,14 +124,11 @@ flows:
 
       - collect: confirm_booking
         description: >
-          Ask the user if the booking details are correct.
-          If they say yes, correct, looks good, confirm — set to true.
-          If they say no, wrong, or request to change a specific detail — set to false.
-          CRITICAL: Do NOT fill this slot if the user says cancel, stop, quit, exit,
-          abort, forget it, never mind, I changed my mind, I want to cancel, cancel booking,
-          cancel my booking, or I do not want to book. These are abort commands and must
-          NEVER be treated as a yes/no confirmation answer. Leave the slot unfilled so
-          the pattern_cancel_flow can handle them instead.
+          Collect yes or no from the user to confirm the booking.
+          Set to true for: yes, yeah, yep, correct, confirm, confirmed, ok, okay, sure, looks good.
+          Set to false for: no, nope, wrong, change, update.
+          Leave null for: cancel, stop, quit, exit, abort, forget it, never mind, I changed my mind.
+          Only fill this slot after the booking summary has been shown. Never fill it earlier.
         next:
           - if: "slots.confirm_booking == 'cancelled'"
             then: step_booking_cancelled

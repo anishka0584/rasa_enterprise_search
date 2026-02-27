@@ -4,6 +4,18 @@ HOTEL BOOKING ASSISTANT - FAQ KNOWLEDGE BASE
 PET POLICY
 
 
+
+
+
+why do dogs bark?
+its how they talk
+
+why do dogs bark?
+its how to talk
+
+can dogs jump
+yes they can
+
 Why do cats fly ?
 Cause it can
 
@@ -110,6 +122,10 @@ GENERAL
 
 
 
+
+which is the highest peak in the world
+Mt. Everest.
+
 what kind of cuisine do they have?
 Our partner hotels offer a variety of cuisines depending on the property, including local, international, and specialty dishes. Please check with the specific hotel directly to know the exact dining options available.
 
@@ -137,6 +153,8 @@ Special requests can be noted and are passed on to the hotel, but cannot be guar
 How do I contact customer support?
 You can reach our support team via the contact details provided in your booking confirmation email.
 
+which is the most budget friendly city?
+vietnam
 
 OTHER
 
@@ -146,6 +164,10 @@ OTHER
 
 
 
+
+
+are you a bot?
+yes i am a hotel booking bot.
 
 who is the best singer
 you are

@@ -334,6 +334,19 @@ def is_question(text: str) -> bool:
         if re.match(pat, t, re.IGNORECASE):
             return False
 
+    # Compound slot answers — comma-separated values like "4 rooms, 8 people, in goa"
+    # or "goa, 5th dec, 8 guests". These are multi-slot answers, never FAQ questions.
+    # Detect: message contains commas AND has numbers mixed with words (no question words).
+    if "," in t:
+        # Strip commas and check if all meaningful tokens are slot-answer material
+        no_comma = re.sub(r"[,]", " ", t)
+        tokens_nc = no_comma.split()
+        question_words = {"what","when","where","who","why","how","which","is","are",
+                          "do","does","can","could","will","would","should","have","has"}
+        # If none of the tokens are question words, treat as compound slot answer
+        if not any(tok in question_words for tok in tokens_nc):
+            return False
+
     # Explicit question markers
     question_starters = (
         "what", "when", "where", "who", "why", "how", "which",
@@ -554,6 +567,13 @@ def try_parse_date(raw: str) -> Optional[datetime]:
 # Slot validators
 # ---------------------------------------------------------------------------
 
+# Markers that identify LLM-hallucinated garbage slot values.
+# These must be silently nulled and NEVER passed to handle_question/store_unknown_question.
+_HALLUCINATION_MARKERS = (
+    "undefined", " # ", "wait for", "before setting",
+    "explicit confirmation", "do not fill", "never fill",
+)
+
 def _intercept_question(raw_slot_value, tracker, dispatcher) -> bool:
     """
     Called at the top of every slot validator.
@@ -562,7 +582,17 @@ def _intercept_question(raw_slot_value, tracker, dispatcher) -> bool:
     so the validator knows to null the slot silently without re-asking.
     The flow's own utter_ask_* will fire on the next turn automatically.
     """
-    # The real user message always takes priority over the slot value
+    # Guard: if the slot value is LLM-hallucinated garbage (copied from slot description),
+    # null it silently — NEVER log it as an unknown question.
+    # This catches "undefined\"  # Wait for explicit confirmation before setting" etc.
+    if raw_slot_value and isinstance(raw_slot_value, str):
+        rv = raw_slot_value.strip().lower()
+        if any(marker in rv for marker in _HALLUCINATION_MARKERS):
+            return True   # signal: null the slot, stay completely silent
+
+    # The real user message always takes priority over the slot value.
+    # IMPORTANT: only call handle_question if the message is a genuine question —
+    # never for plain slot answers like dates, numbers, or city names.
     user_message = (tracker.latest_message.get("text") or "").strip()
     if is_question(user_message):
         handle_question(user_message, dispatcher)
@@ -570,6 +600,7 @@ def _intercept_question(raw_slot_value, tracker, dispatcher) -> bool:
 
     # Fallback: sometimes the LLM stuffs the user question into the slot value
     # (e.g. num_guests = "is there a taxi?"). Catch that too.
+    # But NEVER call handle_question on a value that looks like a slot answer.
     if raw_slot_value and isinstance(raw_slot_value, str):
         val = raw_slot_value.strip()
         if is_question(val) and not parse_number(val):
@@ -670,6 +701,15 @@ class ValidateConfirmBooking(Action):
         raw = tracker.get_slot("confirm_booking")
         user_text = (tracker.latest_message.get("text") or "").strip()
         t = user_text.lower()
+
+        # Guard: silently null any LLM-hallucinated garbage value before anything else.
+        # Ollama copies slot description text verbatim, e.g.:
+        #   "undefined\"  # Wait for explicit confirmation before setting"
+        # This must never reach _intercept_question or be logged as an unknown question.
+        if raw and isinstance(raw, str):
+            rv = raw.strip().lower()
+            if any(marker in rv for marker in _HALLUCINATION_MARKERS):
+                return [SlotSet("confirm_booking", None)]
 
         # Human agent request at confirmation step
         if any(phrase in t for phrase in self.HUMAN_AGENT_PHRASES):
