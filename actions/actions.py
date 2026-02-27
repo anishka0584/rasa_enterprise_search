@@ -503,6 +503,7 @@ def extract_slots_from_text(text: str) -> Dict[str, Optional[str]]:
         r'(?:from|between)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)\s+(?:to|and|-)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)',
         r'(\d+(?:st|nd|rd|th)?)\s+(?:to|-)\s+(\d+(?:st|nd|rd|th)?(?:\s+[a-zA-Z]+)?)',
     ]
+    found_date_range = False
     for pat in date_patterns:
         m = re.search(pat, t, re.IGNORECASE)
         if m:
@@ -526,7 +527,23 @@ def extract_slots_from_text(text: str) -> Dict[str, Optional[str]]:
             if d_in and d_out and d_out > d_in:
                 result["check_in"]  = d_in.strftime("%d/%m/%Y")
                 result["check_out"] = d_out.strftime("%d/%m/%Y")
+                found_date_range = True
             break
+
+    # --- Single check-in date: "from 4th jan" / "starting 5th dec" / "arriving 10th jan" ---
+    # Only attempt this if we didn't already find a full date range above.
+    if not found_date_range and result["check_in"] is None:
+        single_in_m = re.search(
+            r'(?:from|starting|arriving|arriving on|checkin on|check.?in on|check in on)\s+'
+            r'(\d+(?:st|nd|rd|th)?\s+(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|'
+            r'jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?:\s+\d{4})?'
+            r'|\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)',
+            t, re.IGNORECASE
+        )
+        if single_in_m:
+            d_in = try_parse_date(single_in_m.group(1).strip())
+            if d_in:
+                result["check_in"] = d_in.strftime("%d/%m/%Y")
 
     # --- num_rooms: "X room(s)" — check before guests to avoid misparse ---
     rooms_m = re.search(
